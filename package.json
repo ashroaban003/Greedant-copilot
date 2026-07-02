@@ -1,0 +1,106 @@
+{
+  "name": "greedant",
+  "displayName": "Greedant",
+  "description": "A local-first AI coding assistant for VS Code, powered by Ollama and local LLMs.",
+  "version": "0.1.0",
+  "publisher": "greedant",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "AI",
+    "Chat",
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "ai",
+    "assistant",
+    "ollama",
+    "local",
+    "llm",
+    "copilot",
+    "chat",
+    "code"
+  ],
+  "activationEvents": [
+    "onView:greedant.chatView"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "greedant-sidebar",
+          "title": "Greedant",
+          "icon": "assets/greedant-logo.svg"
+        }
+      ]
+    },
+    "views": {
+      "greedant-sidebar": [
+        {
+          "type": "webview",
+          "id": "greedant.chatView",
+          "name": "Chat"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "greedant.openChat",
+        "title": "Greedant: Open Chat"
+      },
+      {
+        "command": "greedant.clearChat",
+        "title": "Greedant: Clear Chat History"
+      }
+    ],
+    "configuration": {
+      "title": "Greedant",
+      "properties": {
+        "greedant.provider": {
+          "type": "string",
+          "default": "ollama",
+          "enum": [
+            "ollama"
+          ],
+          "enumDescriptions": [
+            "Local Ollama server"
+          ],
+          "description": "The LLM provider used by Greedant."
+        },
+        "greedant.ollama.baseUrl": {
+          "type": "string",
+          "default": "http://localhost:11434",
+          "description": "Base URL for the local Ollama server."
+        },
+        "greedant.ollama.model": {
+          "type": "string",
+          "default": "qwen2.5-coder:3b",
+          "description": "Ollama model used by Greedant."
+        },
+        "greedant.systemPrompt": {
+          "type": "string",
+          "default": "You are Greedant, a helpful AI coding assistant. You help developers write, understand, and debug code. Be concise, accurate, and helpful.",
+          "description": "System prompt sent to the model at the start of each conversation."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.15.0",
+    "@typescript-eslint/parser": "^6.15.0",
+    "eslint": "^8.56.0",
+    "typescript": "^5.3.3"
+  }
+}
