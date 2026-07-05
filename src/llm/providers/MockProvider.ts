@@ -1,5 +1,5 @@
-import { LLMProvider } from "./LLMProvider";
-import { LLMRequest, LLMResponse, LLMStreamChunk, ProviderStatus } from "./LLMTypes";
+import { LLMProvider } from "../LLMProvider";
+import { LLMRequest, LLMResponse, LLMStreamChunk, ProviderStatus, FinishReason } from "../LLMTypes";
 
 /**
  * Mock LLM provider for UI development and testing.
@@ -11,7 +11,7 @@ export class MockProvider implements LLMProvider {
   async chat(request: LLMRequest): Promise<LLMResponse> {
     const response = this.pickResponse(request.messages[request.messages.length - 1]?.content || "");
     await this.delay(300);
-    return { content: response, model: "mock", finishReason: "stop" };
+    return { content: response, model: "mock", finishReason: FinishReason.Stop };
   }
 
   async *streamChat(request: LLMRequest): AsyncGenerator<LLMStreamChunk, void, unknown> {

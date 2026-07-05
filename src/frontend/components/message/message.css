@@ -1,0 +1,197 @@
+/* ── Message Component ─────────────────────────────────────── */
+
+.messages-container {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+/* Welcome screen (shown when no messages) */
+.welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px var(--spacing-lg);
+  flex: 1;
+  text-align: center;
+  gap: var(--spacing-lg);
+}
+
+.welcome-logo {
+  width: 40px;
+  height: 40px;
+  opacity: 0.5;
+}
+
+.welcome h2 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  margin: 0;
+}
+
+.welcome p {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground);
+  line-height: 1.6;
+  max-width: 240px;
+}
+
+.welcome-hints {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  width: 100%;
+  max-width: 260px;
+  margin-top: var(--spacing-sm);
+}
+
+.welcome-hint {
+  font-size: 11.5px;
+  color: var(--vscode-descriptionForeground);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.welcome-hint:hover {
+  border-color: var(--vscode-focusBorder);
+  color: var(--vscode-foreground);
+}
+
+/* Individual message */
+.message {
+  display: flex;
+  gap: var(--spacing-sm);
+  animation: msgIn 0.2s ease;
+  width: 100%;
+}
+
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.message-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.message.user .message-avatar {
+  background: var(--vscode-textLink-foreground);
+  color: var(--vscode-button-foreground, #fff);
+}
+
+.message.assistant .message-avatar {
+  background: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-panel-border);
+  color: var(--vscode-foreground);
+}
+
+.message-avatar svg {
+  width: 14px;
+  height: 14px;
+}
+
+.message-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.message-sender {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vscode-foreground);
+  opacity: 0.7;
+}
+
+.message-content {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--vscode-foreground);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.message-content p {
+  margin: 0 0 var(--spacing-sm) 0;
+}
+
+.message-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Code blocks */
+.message-content pre {
+  background: var(--vscode-textCodeBlock-background, var(--vscode-editor-background));
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-md);
+  margin: var(--spacing-sm) 0;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre;
+}
+
+.message-content code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--vscode-textCodeBlock-background, var(--vscode-editor-background));
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.message-content pre code {
+  background: none;
+  padding: 0;
+}
+
+/* Streaming cursor */
+.streaming .message-content::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 15px;
+  background: var(--vscode-textLink-foreground);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursorBlink 0.7s step-end infinite;
+  border-radius: 1px;
+}
+
+@keyframes cursorBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Error state */
+.message.error .message-content {
+  color: var(--vscode-errorForeground);
+  background: color-mix(in srgb, var(--vscode-errorForeground) 8%, transparent);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--vscode-errorForeground);
+  font-size: 12px;
+}

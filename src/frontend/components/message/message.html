@@ -1,0 +1,21 @@
+<!-- Message Component -->
+<main class="messages-container" id="messagesContainer" role="log" aria-label="Chat messages" aria-live="polite">
+  <div class="welcome" id="welcomeScreen" role="complementary" aria-label="Welcome">
+    <svg class="welcome-logo" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M32 8C20 8 14 16 14 26c0 6 2 10 5 14 2 3 3 6 3 10v2h20v-2c0-4 1-7 3-10 3-4 5-8 5-14 0-10-6-18-18-18z" stroke="currentColor" stroke-width="2.5" fill="none"/>
+      <circle cx="24" cy="26" r="3" fill="currentColor"/>
+      <circle cx="40" cy="26" r="3" fill="currentColor"/>
+      <path d="M26 34c2 2 4 3 6 3s4-1 6-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+      <path d="M14 18c-3-3-7-4-9-2s-1 6 2 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+      <path d="M50 18c3-3 7-4 9-2s1 6-2 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+      <path d="M44 52c4 2 8 5 10 3s0-6-3-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/>
+    </svg>
+    <h2>{{extensionName}}</h2>
+    <p>Your local AI coding assistant. Ask me anything — I run entirely on your machine.</p>
+    <div class="welcome-hints" role="list" aria-label="Suggested prompts">
+      <button class="welcome-hint" data-prompt="Explain how async/await works in JavaScript">Explain async/await in JavaScript</button>
+      <button class="welcome-hint" data-prompt="Write a Python function to find duplicates in a list">Find duplicates in a Python list</button>
+      <button class="welcome-hint" data-prompt="What are the SOLID principles?">What are the SOLID principles?</button>
+    </div>
+  </div>
+</main>

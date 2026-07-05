@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none'; style-src {{cspSource}}; script-src 'nonce-{{nonce}}';">
+  <title>{{extensionName}}</title>
+
+  <!-- Shared styles (loaded first — tokens, reset) -->
+  <link rel="stylesheet" href="{{baseCssUri}}">
+
+  <!-- Component styles -->
+  <link rel="stylesheet" href="{{headerCssUri}}">
+  <link rel="stylesheet" href="{{messageCssUri}}">
+  <link rel="stylesheet" href="{{inputCssUri}}">
+</head>
+<body data-extension-name="{{extensionName}}">
+
+  {{headerHtml}}
+
+  {{messageHtml}}
+
+  {{inputHtml}}
+
+  <!-- Scripts: shared first, then components, then page controller last -->
+  <script nonce="{{nonce}}" src="{{iconsJsUri}}"></script>
+  <script nonce="{{nonce}}" src="{{messageJsUri}}"></script>
+  <script nonce="{{nonce}}" src="{{headerJsUri}}"></script>
+  <script nonce="{{nonce}}" src="{{inputJsUri}}"></script>
+  <script nonce="{{nonce}}" src="{{chatJsUri}}"></script>
+</body>
+</html>

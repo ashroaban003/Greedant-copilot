@@ -23,11 +23,19 @@ export interface LLMRequest {
   maxTokens?: number;
 }
 
+/** Finish reason for LLM responses */
+export enum FinishReason {
+  Stop = "stop",
+  Length = "length",
+  ToolCalls = "tool_calls",
+  Error = "error",
+}
+
 /** Response from an LLM provider (non-streaming) */
 export interface LLMResponse {
   content: string;
   model: string;
-  finishReason?: "stop" | "length" | "tool_calls" | "error";
+  finishReason?: FinishReason;
 }
 
 /** A chunk in a streaming response */

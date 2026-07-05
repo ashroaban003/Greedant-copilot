@@ -1,6 +1,6 @@
-import * as vscode from "vscode";
 import { ChatService } from "./ChatService";
-import { ChatMessage, ExtensionMessage } from "./ChatTypes";
+import { ChatMessage, ChatRole } from "./ChatMessage";
+import { ExtensionMessage, MSG } from "./MessageProtocol";
 
 /**
  * ChatController manages the lifecycle of chat requests.
@@ -8,19 +8,10 @@ import { ChatMessage, ExtensionMessage } from "./ChatTypes";
  * It bridges the webview (UI) and the ChatService (business logic),
  * handling user input, streaming responses back to the UI, and
  * managing loading/error states.
- *
- * Future extensions:
- * - Request cancellation via AbortController
- * - Request queuing (prevent concurrent requests)
- * - Rate limiting
- * - Retry logic with exponential backoff
- * - Multi-step agent orchestration
- * - Tool call execution loop
- * - Progress reporting for long operations
  */
 export class ChatController {
   private chatService: ChatService;
-  private isProcessing = false;
+  private activeRequests = new Map<string, boolean>();
   private messageCounter = 0;
 
   constructor(chatService: ChatService) {
@@ -30,14 +21,18 @@ export class ChatController {
   /**
    * Handle an incoming user message.
    * Streams the response back via the postMessage callback.
+   *
+   * Each session (identified by sessionId) can process independently,
+   * supporting multiple live windows without blocking each other.
    */
   async handleUserMessage(
     content: string,
-    postMessage: (message: ExtensionMessage) => void
+    postMessage: (message: ExtensionMessage) => void,
+    sessionId: string = "default"
   ): Promise<void> {
-    if (this.isProcessing) {
+    if (this.activeRequests.get(sessionId)) {
       postMessage({
-        type: "error",
+        type: MSG.ERROR,
         error: "A request is already in progress. Please wait.",
       });
       return;
@@ -47,57 +42,21 @@ export class ChatController {
       return;
     }
 
-    this.isProcessing = true;
-    const assistantMessageId = this.generateMessageId();
+    this.activeRequests.set(sessionId, true);
 
     try {
-      // Notify UI that we're processing
-      postMessage({ type: "setLoading", loading: true });
+      postMessage({ type: MSG.SET_LOADING, loading: true });
 
-      // Send the user message as a chat message to the webview
-      const userMessage: ChatMessage = {
-        id: this.generateMessageId(),
-        role: "user",
-        content: content.trim(),
-        timestamp: Date.now(),
-      };
-      postMessage({ type: "receiveMessage", message: userMessage });
-
-      // Create a placeholder assistant message
-      const assistantMessage: ChatMessage = {
-        id: assistantMessageId,
-        role: "assistant",
-        content: "",
-        timestamp: Date.now(),
-        isStreaming: true,
-      };
-      postMessage({ type: "receiveMessage", message: assistantMessage });
-
-      // Stream the response
-      for await (const chunk of this.chatService.sendMessageStreaming(content.trim())) {
-        postMessage({
-          type: "streamChunk",
-          messageId: assistantMessageId,
-          content: chunk.content,
-        });
-      }
-
-      // Signal stream completion
-      postMessage({ type: "streamEnd", messageId: assistantMessageId });
+      this.processUserMessage(content.trim(), postMessage);
+      await this.processAssistantMessage(content.trim(), postMessage);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "An unexpected error occurred.";
 
-      postMessage({
-        type: "error",
-        error: errorMessage,
-      });
-
-      // Remove the incomplete assistant message from history
-      this.chatService.undoLastResponse();
+      postMessage({ type: MSG.ERROR, error: errorMessage });
     } finally {
-      this.isProcessing = false;
-      postMessage({ type: "setLoading", loading: false });
+      this.activeRequests.delete(sessionId);
+      postMessage({ type: MSG.SET_LOADING, loading: false });
     }
   }
 
@@ -106,7 +65,7 @@ export class ChatController {
    */
   clearChat(postMessage: (message: ExtensionMessage) => void): void {
     this.chatService.clearHistory();
-    postMessage({ type: "clearChat" });
+    postMessage({ type: MSG.CLEAR_CHAT });
   }
 
   /**
@@ -117,10 +76,64 @@ export class ChatController {
   }
 
   /**
-   * Whether a request is currently being processed.
+   * Whether any session currently has a request in progress.
    */
   get busy(): boolean {
-    return this.isProcessing;
+    return this.activeRequests.size > 0;
+  }
+
+  /**
+   * Whether a specific session has a request in progress.
+   */
+  isSessionBusy(sessionId: string): boolean {
+    return this.activeRequests.get(sessionId) ?? false;
+  }
+
+  // ─── Private helpers ───────────────────────────────────────────
+
+  /**
+   * Send the user message to the webview for display and add to history.
+   */
+  private processUserMessage(
+    content: string,
+    postMessage: (message: ExtensionMessage) => void
+  ): void {
+    const userMessage: ChatMessage = {
+      id: this.generateMessageId(),
+      role: ChatRole.User,
+      content,
+      timestamp: Date.now(),
+    };
+    postMessage({ type: MSG.RECEIVE_MESSAGE, message: userMessage });
+
+    this.chatService.addUserPrompt(content);
+  }
+
+  /**
+   * Stream the assistant response: sends placeholder, streams chunks, signals end.
+   */
+  private async processAssistantMessage(
+    userContent: string,
+    postMessage: (message: ExtensionMessage) => void
+  ): Promise<void> {
+    const id = this.generateMessageId();
+    const assistantMessage: ChatMessage = {
+      id,
+      role: ChatRole.Assistant,
+      content: "",
+      timestamp: Date.now(),
+      isStreaming: true,
+    };
+    postMessage({ type: MSG.RECEIVE_MESSAGE, message: assistantMessage });
+
+    for await (const chunk of this.chatService.sendMessageStreaming(userContent)) {
+      postMessage({
+        type: MSG.STREAM_CHUNK,
+        messageId: id,
+        content: chunk.content,
+      });
+    }
+    postMessage({ type: MSG.STREAM_END, messageId: id });
   }
 
   private generateMessageId(): string {

@@ -3,14 +3,12 @@ import {
   CMD_OPEN_CHAT,
   CMD_CLEAR_CHAT,
   VIEW_ID,
-  CONFIG_SECTION,
 } from "./constants";
-import { GreedantConfig } from "./config/GreedantConfig";
-import { OllamaProvider } from "./llm/OllamaProvider";
-import { MockProvider } from "./llm/MockProvider";
+import { ChatConfig } from "./config/ChatConfig";
+import { createProvider } from "./llm/ProviderFactory";
 import { ChatService } from "./chat/ChatService";
 import { ChatController } from "./chat/ChatController";
-import { GreedantViewProvider } from "./webview/GreedantViewProvider";
+import { GreedantViewProvider } from "./frontend/GreedantViewProvider";
 
 /**
  * Greedant extension entry point.
@@ -37,30 +35,21 @@ import { GreedantViewProvider } from "./webview/GreedantViewProvider";
 let viewProvider: GreedantViewProvider | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
-  // Initialize configuration
-  const config = new GreedantConfig();
+  const config = new ChatConfig();
+  const provider = createProvider(config);
 
-  // Initialize the LLM provider based on configuration
-  // Using MockProvider for UI development. Switch to OllamaProvider for real usage:
-   const provider = new OllamaProvider(config);
-  //const provider = new MockProvider();
-
-  // Initialize the chat pipeline
   const chatService = new ChatService(provider, config);
   const chatController = new ChatController(chatService);
 
-  // Register the sidebar webview view provider
-  viewProvider = new GreedantViewProvider(context.extensionUri, chatController);
+  viewProvider = new GreedantViewProvider(context.extensionUri, chatController, config);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(VIEW_ID, viewProvider, {
       webviewOptions: { retainContextWhenHidden: true },
     })
   );
 
-  // Register commands
   context.subscriptions.push(
     vscode.commands.registerCommand(CMD_OPEN_CHAT, () => {
-      // Focus the Greedant sidebar panel
       vscode.commands.executeCommand(`${VIEW_ID}.focus`);
     })
   );
@@ -68,16 +57,6 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand(CMD_CLEAR_CHAT, () => {
       viewProvider?.clearChat();
-    })
-  );
-
-  // Watch for configuration changes
-  context.subscriptions.push(
-    vscode.workspace.onDidChangeConfiguration((e) => {
-      if (e.affectsConfiguration(CONFIG_SECTION)) {
-        // Future: Hot-reload provider when settings change
-        // For now, the config object reads live values on each access
-      }
     })
   );
 }

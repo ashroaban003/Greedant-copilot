@@ -1,7 +1,7 @@
 import { LLMProvider } from "../llm/LLMProvider";
 import { LLMMessage, LLMStreamChunk } from "../llm/LLMTypes";
-import { GreedantConfig } from "../config/GreedantConfig";
-import { ChatMessage } from "./ChatTypes";
+import { ChatConfig } from "../config/ChatConfig";
+import { ChatRole } from "./ChatMessage";
 
 /**
  * ChatService orchestrates the chat flow between the user, conversation
@@ -9,50 +9,34 @@ import { ChatMessage } from "./ChatTypes";
  *
  * This service is provider-agnostic — it works with any LLMProvider
  * implementation and manages the conversation state.
- *
- * Future extensions:
- * - Context enrichment (inject active file, selected text, workspace info)
- * - Tool calling pipeline (detect tool calls, execute, return results)
- * - RAG integration (retrieve relevant code/docs before generating)
- * - Conversation branching and forking
- * - Multi-step agent workflows
- * - Response post-processing (code extraction, diff generation)
- * - Memory and persistence across sessions
- * - Cancellation token support
  */
 export class ChatService {
   private provider: LLMProvider;
-  private config: GreedantConfig;
+  private config: ChatConfig;
   private conversationHistory: LLMMessage[] = [];
 
-  constructor(provider: LLMProvider, config: GreedantConfig) {
+  /** Maximum number of messages to retain in history (user + assistant pairs) */
+  private static readonly MAX_HISTORY_MESSAGES = 50;
+
+  constructor(provider: LLMProvider, config: ChatConfig) {
     this.provider = provider;
     this.config = config;
   }
 
   /**
-   * Send a user message and get a complete response.
+   * Add a user prompt to the conversation history.
    */
-  async sendMessage(userMessage: string): Promise<string> {
-    // Build the full message list with system prompt
-    this.conversationHistory.push({ role: "user", content: userMessage });
-    const messages = this.buildMessages();
-
-    const response = await this.provider.chat({ messages });
-
-    // Store assistant response in history
-    this.conversationHistory.push({ role: "assistant", content: response.content });
-
-    return response.content;
+  addUserPrompt(content: string): void {
+    this.addToHistory(ChatRole.User, content);
   }
 
   /**
-   * Send a user message and stream the response chunk by chunk.
+   * Stream the assistant response chunk by chunk.
+   * Does NOT add the user message to history — caller must call addUserPrompt first.
    */
   async *sendMessageStreaming(
     userMessage: string
   ): AsyncGenerator<LLMStreamChunk, void, unknown> {
-    this.conversationHistory.push({ role: "user", content: userMessage });
     const messages = this.buildMessages();
 
     let fullResponse = "";
@@ -62,8 +46,7 @@ export class ChatService {
       yield chunk;
     }
 
-    // Store complete assistant response in history
-    this.conversationHistory.push({ role: "assistant", content: fullResponse });
+    this.addToHistory(ChatRole.Assistant, fullResponse);
   }
 
   /**
@@ -89,19 +72,6 @@ export class ChatService {
   }
 
   /**
-   * Remove the last assistant message from history.
-   * Useful for retry/regenerate functionality.
-   */
-  undoLastResponse(): void {
-    if (
-      this.conversationHistory.length > 0 &&
-      this.conversationHistory[this.conversationHistory.length - 1].role === "assistant"
-    ) {
-      this.conversationHistory.pop();
-    }
-  }
-
-  /**
    * Swap the active LLM provider (e.g., when user changes settings).
    */
   setProvider(provider: LLMProvider): void {
@@ -113,20 +83,31 @@ export class ChatService {
    * Build the full message array including system prompt.
    */
   private buildMessages(): LLMMessage[] {
-    const systemPrompt = this.config.systemPrompt;
-    const messages: LLMMessage[] = [
-      { role: "system", content: systemPrompt },
+    return [
+      { role: "system", content: this.config.systemPrompt },
       ...this.conversationHistory,
     ];
+  }
 
-    // Future: Inject context here
-    // - Active file content
-    // - Selected text
-    // - Relevant workspace files (RAG)
-    // - Tool definitions
-    // - Previous tool results
+  /**
+   * Add a message to history and trim if needed.
+   */
+  private addToHistory(role: ChatRole, content: string): void {
+    this.conversationHistory.push({ role, content });
+    this.trimHistory();
+  }
 
-    return messages;
+  /**
+   * Trim conversation history to MAX_HISTORY_MESSAGES.
+   * Keeps the most recent messages (end of array) and drops the oldest (start of array).
+   * Example: if MAX is 50 and length is 60, slice(10) keeps indices 10–59 (newest 50).
+   */
+  private trimHistory(): void {
+    if (this.conversationHistory.length > ChatService.MAX_HISTORY_MESSAGES) {
+      this.conversationHistory = this.conversationHistory.slice(
+        this.conversationHistory.length - ChatService.MAX_HISTORY_MESSAGES
+      );
+    }
   }
 
   dispose(): void {

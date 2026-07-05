@@ -12,7 +12,7 @@ import {
 } from "../constants";
 
 /**
- * Centralized configuration reader for the Greedant extension.
+ * Centralized configuration reader for the chat extension.
  *
  * All VS Code settings are read through this class to keep
  * configuration access consistent and easy to extend.
@@ -24,7 +24,7 @@ import {
  * - Add telemetry opt-in/out settings
  * - Add workspace-level overrides
  */
-export class GreedantConfig {
+export class ChatConfig {
   private get config(): vscode.WorkspaceConfiguration {
     return vscode.workspace.getConfiguration(CONFIG_SECTION);
   }
