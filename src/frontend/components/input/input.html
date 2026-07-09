@@ -1,0 +1,17 @@
+<!-- Input Component -->
+<footer class="input-area" role="form" aria-label="Chat input">
+  <div class="thinking-indicator" id="thinkingIndicator" role="status" aria-live="polite">
+    <div class="thinking-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+    <span class="thinking-text">{{extensionName}} is thinking...</span>
+  </div>
+  <div class="input-box">
+    <textarea class="input-field" id="messageInput" placeholder="Ask anything..." rows="1" aria-label="Message input"></textarea>
+    <button class="send-btn" id="sendBtn" title="Send (Enter)" aria-label="Send message">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M14 2L7 9"/>
+        <path d="M14 2L9.5 14L7 9L2 6.5L14 2Z"/>
+      </svg>
+    </button>
+  </div>
+  <div class="input-hint" aria-hidden="true">Enter to send · Shift+Enter for new line</div>
+</footer>
