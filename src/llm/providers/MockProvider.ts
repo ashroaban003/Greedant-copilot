@@ -4,19 +4,22 @@ import { LLMRequest, LLMResponse, LLMStreamChunk, ProviderStatus, FinishReason }
 /**
  * Mock LLM provider for UI development and testing.
  * Simulates streaming responses with realistic delays.
+ *
+ * Debug Features:
+ * - When user sends "debug context", returns the full system prompt
+ *   (which includes gathered editor context) for testing
  */
 export class MockProvider implements LLMProvider {
   readonly name = "mock";
 
   async chat(request: LLMRequest): Promise<LLMResponse> {
-    const response = this.pickResponse(request.messages[request.messages.length - 1]?.content || "");
+    const response = this.pickResponse(request);
     await this.delay(300);
     return { content: response, model: "mock", finishReason: FinishReason.Stop };
   }
 
   async *streamChat(request: LLMRequest): AsyncGenerator<LLMStreamChunk, void, unknown> {
-    const userMsg = request.messages[request.messages.length - 1]?.content || "";
-    const response = this.pickResponse(userMsg);
+    const response = this.pickResponse(request);
     const words = response.split(" ");
 
     for (let i = 0; i < words.length; i++) {
@@ -34,8 +37,14 @@ export class MockProvider implements LLMProvider {
 
   dispose(): void {}
 
-  private pickResponse(input: string): string {
-    const lower = input.toLowerCase();
+  private pickResponse(request: LLMRequest): string {
+    const userMsg = request.messages[request.messages.length - 1]?.content || "";
+    const lower = userMsg.toLowerCase();
+
+    // Debug command: return the full context/system prompt
+    if (lower.includes("debug context") || lower.includes("show context") || lower.includes("show prompt")) {
+      return this.formatDebugResponse(request);
+    }
 
     if (lower.includes("hello") || lower.includes("hi")) {
       return "Hey! I'm Greedant, your local AI coding assistant. How can I help you today?";
@@ -54,6 +63,26 @@ export class MockProvider implements LLMProvider {
     }
 
     return "I can help with that. Could you give me a bit more context about what you're working on? I'm good with code explanations, debugging, writing functions, and general programming questions.";
+  }
+
+  /**
+   * Format debug response showing the full system prompt and context.
+   */
+  private formatDebugResponse(request: LLMRequest): string {
+    const lines: string[] = [];
+    
+    lines.push("## Debug: Full Request Context\n");
+    lines.push(`**Total messages:** ${request.messages.length}\n`);
+
+    for (let i = 0; i < request.messages.length; i++) {
+      const msg = request.messages[i];
+      lines.push(`### Message ${i + 1} (${msg.role})\n`);
+      lines.push("```");
+      lines.push(msg.content);
+      lines.push("```\n");
+    }
+
+    return lines.join("\n");
   }
 
   private delay(ms: number): Promise<void> {

@@ -13,6 +13,9 @@ import { ChatService } from "../../src/chat/ChatService";
 import { MockProvider } from "../../src/llm/providers/MockProvider";
 import { ExtensionMessage, MSG } from "../../src/chat/MessageProtocol";
 import { ChatConfig } from "../../src/config/ChatConfig";
+import { ContextManager } from "../../src/context/ContextManager";
+import { SelectionProvider } from "../../src/context/providers/SelectionProvider";
+import { LLMRequest } from "../../src/llm/LLMTypes";
 
 function createMockConfig(): ChatConfig {
   return {
@@ -23,12 +26,20 @@ function createMockConfig(): ChatConfig {
   } as unknown as ChatConfig;
 }
 
-function buildPipeline() {
+function createMockContextManager(context: string | null = null): ContextManager {
+  const mockSelectionProvider = {
+    getContext: jest.fn(() => context),
+  } as unknown as SelectionProvider;
+  return new ContextManager(mockSelectionProvider);
+}
+
+function buildPipeline(contextManager?: ContextManager) {
   const provider = new MockProvider();
   const config = createMockConfig();
-  const chatService = new ChatService(provider, config);
+  const cm = contextManager ?? createMockContextManager();
+  const chatService = new ChatService(provider, config, cm);
   const controller = new ChatController(chatService);
-  return { controller, chatService, provider };
+  return { controller, chatService, provider, contextManager: cm };
 }
 
 async function collectMessages(
@@ -252,5 +263,156 @@ describe("Integration: ChatController → ChatService → MockProvider", () => {
 
     expect(helloChunks).not.toBe(solidChunks);
     expect(solidChunks).toContain("Single Responsibility");
+  });
+});
+
+describe("Integration: Context Flow", () => {
+  it("includes base system prompt and instructions in LLM request", async () => {
+    const contextManager = createMockContextManager(null);
+    const provider = new MockProvider();
+    const config = createMockConfig();
+    const chatService = new ChatService(provider, config, contextManager);
+    const controller = new ChatController(chatService);
+
+    // Spy on the provider to capture the request
+    const streamChatSpy = jest.spyOn(provider, "streamChat");
+
+    const messages: ExtensionMessage[] = [];
+    await controller.handleUserMessage("hello", (m) => messages.push(m));
+
+    expect(streamChatSpy).toHaveBeenCalled();
+    const request = streamChatSpy.mock.calls[0][0] as LLMRequest;
+
+    // Verify system prompt structure
+    expect(request.messages[0].role).toBe("system");
+    expect(request.messages[0].content).toContain("You are a test assistant.");
+    expect(request.messages[0].content).toContain("## Instructions");
+    expect(request.messages[0].content).toContain("Do NOT repeat the selected code");
+  });
+
+  it("includes selection context in LLM request when editor has selection", async () => {
+    const selectedCode = `# Selected Code
+
+This is the code the user currently has selected. Use it if relevant to their question.
+
+File: test.ts (lines 1-3)
+\`\`\`typescript
+1 | function add(a: number, b: number) {
+2 |   return a + b;
+3 | }
+\`\`\``;
+
+    const contextManager = createMockContextManager(selectedCode);
+    const provider = new MockProvider();
+    const config = createMockConfig();
+    const chatService = new ChatService(provider, config, contextManager);
+    const controller = new ChatController(chatService);
+
+    const streamChatSpy = jest.spyOn(provider, "streamChat");
+
+    const messages: ExtensionMessage[] = [];
+    await controller.handleUserMessage("explain this", (m) => messages.push(m));
+
+    const request = streamChatSpy.mock.calls[0][0] as LLMRequest;
+
+    // Verify context is included
+    expect(request.messages[0].content).toContain("# Selected Code");
+    expect(request.messages[0].content).toContain("function add");
+    expect(request.messages[0].content).toContain("File: test.ts");
+  });
+
+  it("does not include selection section when no editor context", async () => {
+    const contextManager = createMockContextManager(null);
+    const provider = new MockProvider();
+    const config = createMockConfig();
+    const chatService = new ChatService(provider, config, contextManager);
+    const controller = new ChatController(chatService);
+
+    const streamChatSpy = jest.spyOn(provider, "streamChat");
+
+    const messages: ExtensionMessage[] = [];
+    await controller.handleUserMessage("hello", (m) => messages.push(m));
+
+    const request = streamChatSpy.mock.calls[0][0] as LLMRequest;
+
+    // Should have instructions but no selection context
+    expect(request.messages[0].content).toContain("## Instructions");
+    expect(request.messages[0].content).not.toContain("# Selected Code");
+  });
+
+  it("prompt structure is correct: base → instructions → context", async () => {
+    const selectedCode = "# Selected Code\ncode here";
+    const contextManager = createMockContextManager(selectedCode);
+    const provider = new MockProvider();
+    const config = createMockConfig();
+    const chatService = new ChatService(provider, config, contextManager);
+    const controller = new ChatController(chatService);
+
+    const streamChatSpy = jest.spyOn(provider, "streamChat");
+
+    const messages: ExtensionMessage[] = [];
+    await controller.handleUserMessage("test", (m) => messages.push(m));
+
+    const request = streamChatSpy.mock.calls[0][0] as LLMRequest;
+    const systemContent = request.messages[0].content;
+
+    // Verify order
+    const baseIndex = systemContent.indexOf("You are a test assistant.");
+    const instructionsIndex = systemContent.indexOf("## Instructions");
+    const contextIndex = systemContent.indexOf("# Selected Code");
+
+    expect(baseIndex).toBeGreaterThanOrEqual(0);
+    expect(instructionsIndex).toBeGreaterThan(baseIndex);
+    expect(contextIndex).toBeGreaterThan(instructionsIndex);
+  });
+
+  it("user message is sent correctly alongside context-enhanced system prompt", async () => {
+    const contextManager = createMockContextManager("# Selected Code\nconst x = 1;");
+    const provider = new MockProvider();
+    const config = createMockConfig();
+    const chatService = new ChatService(provider, config, contextManager);
+    const controller = new ChatController(chatService);
+
+    const streamChatSpy = jest.spyOn(provider, "streamChat");
+
+    const messages: ExtensionMessage[] = [];
+    await controller.handleUserMessage("what does this do?", (m) => messages.push(m));
+
+    const request = streamChatSpy.mock.calls[0][0] as LLMRequest;
+
+    // Verify both messages are present
+    expect(request.messages).toHaveLength(2);
+    expect(request.messages[0].role).toBe("system");
+    expect(request.messages[1].role).toBe("user");
+    expect(request.messages[1].content).toBe("what does this do?");
+  });
+
+  it("context changes between requests are reflected", async () => {
+    // First request with no context
+    const mockSelectionProvider = {
+      getContext: jest.fn(() => null),
+    } as unknown as SelectionProvider;
+    const contextManager = new ContextManager(mockSelectionProvider);
+
+    const provider = new MockProvider();
+    const config = createMockConfig();
+    const chatService = new ChatService(provider, config, contextManager);
+    const controller = new ChatController(chatService);
+
+    const streamChatSpy = jest.spyOn(provider, "streamChat");
+
+    // First request - no context
+    await controller.handleUserMessage("hello", () => {});
+    const request1 = streamChatSpy.mock.calls[0][0] as LLMRequest;
+    expect(request1.messages[0].content).not.toContain("# Selected Code");
+
+    // Simulate user selecting code
+    (mockSelectionProvider.getContext as jest.Mock).mockReturnValue("# Selected Code\nnew code");
+
+    // Second request - has context
+    await controller.handleUserMessage("explain", () => {});
+    const request2 = streamChatSpy.mock.calls[1][0] as LLMRequest;
+    expect(request2.messages[0].content).toContain("# Selected Code");
+    expect(request2.messages[0].content).toContain("new code");
   });
 });

@@ -9,27 +9,20 @@ import { createProvider } from "./llm/ProviderFactory";
 import { ChatService } from "./chat/ChatService";
 import { ChatController } from "./chat/ChatController";
 import { GreedantViewProvider } from "./frontend/GreedantViewProvider";
+import { SelectionProvider } from "./context/providers/SelectionProvider";
+import { ContextManager } from "./context/ContextManager";
 
 /**
  * Greedant extension entry point.
- *
- * Activation is minimal — we register the sidebar view provider and commands,
- * then let VS Code handle the lifecycle.
  *
  * Architecture:
  *   extension.ts (wiring)
  *     -> GreedantViewProvider (webview management)
  *       -> ChatController (request lifecycle)
  *         -> ChatService (orchestration)
- *           -> LLMProvider (Ollama, future: OpenAI, Anthropic, etc.)
- *
- * Future extensions:
- * - Register inline completion provider
- * - Register code action provider
- * - Register terminal link provider
- * - Watch workspace configuration changes for hot-reloading
- * - Register status bar item for connection status
- * - Register context menu commands (explain selection, generate tests, etc.)
+ *           -> ContextManager (context aggregation)
+ *             -> SelectionProvider (editor context)
+ *           -> LLMProvider (Ollama, etc.)
  */
 
 let viewProvider: GreedantViewProvider | undefined;
@@ -38,7 +31,11 @@ export function activate(context: vscode.ExtensionContext): void {
   const config = new ChatConfig();
   const provider = createProvider(config);
 
-  const chatService = new ChatService(provider, config);
+  // Context providers
+  const selectionProvider = new SelectionProvider();
+  const contextManager = new ContextManager(selectionProvider);
+
+  const chatService = new ChatService(provider, config, contextManager);
   const chatController = new ChatController(chatService);
 
   viewProvider = new GreedantViewProvider(context.extensionUri, chatController, config);

@@ -13,16 +13,6 @@ import {
 
 /**
  * Centralized configuration reader for the chat extension.
- *
- * All VS Code settings are read through this class to keep
- * configuration access consistent and easy to extend.
- *
- * Future extensions:
- * - Add provider-specific configs (OpenAI key, Anthropic key, etc.)
- * - Add context window size settings
- * - Add RAG/indexing configuration
- * - Add telemetry opt-in/out settings
- * - Add workspace-level overrides
  */
 export class ChatConfig {
   private get config(): vscode.WorkspaceConfiguration {
