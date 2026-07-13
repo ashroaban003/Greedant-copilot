@@ -5,6 +5,41 @@
   border-top: 1px solid var(--vscode-panel-border);
   flex-shrink: 0;
   background: var(--vscode-sideBar-background);
+  position: relative;
+}
+
+/* ── Scroll Down Button ────────────────────────────────────── */
+.scroll-down-btn {
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 28px;
+  border: 0.69px solid var(--vscode-panel-border);
+  border-radius: 50%;
+  background: var(--vscode-editor-background);
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+  z-index: 10;
+}
+
+.scroll-down-btn.visible {
+  display: flex;
+}
+
+.scroll-down-btn:hover {
+  opacity: 1;
+  border-color: var(--vscode-focusBorder);
+}
+
+.scroll-down-btn svg {
+  width: 14px;
+  height: 14px;
 }
 
 .input-box {

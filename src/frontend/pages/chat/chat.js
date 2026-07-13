@@ -16,11 +16,21 @@
 
   // ─── Initialize Components ────────────────────────────────────
 
+  const scrollDownBtn = document.getElementById("scrollDownBtn");
+
   MessageComponent.init({
     container: document.getElementById("messagesContainer"),
     welcomeScreen: document.getElementById("welcomeScreen"),
     extensionName: extensionName,
+    scrollDownBtn: scrollDownBtn,
   });
+
+  // Wire up scroll down button
+  if (scrollDownBtn) {
+    scrollDownBtn.addEventListener("click", function () {
+      MessageComponent.scrollToBottom();
+    });
+  }
 
   InputComponent.init({
     onSend: function (content) {
