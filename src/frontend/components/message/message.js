@@ -17,6 +17,28 @@ const MessageComponent = (function () {
   let _welcomeScreen = null;
   let _hasMessages = false;
   let _extensionName = "Greedant";
+  let _scrollDownBtn = null;
+
+  // ─── Scroll Helpers ───────────────────────────────────────────
+
+  function isNearBottom() {
+    if (!_container) return true;
+    return _container.scrollHeight - _container.scrollTop - _container.clientHeight < 50;
+  }
+
+  function handleScroll() {
+    if (_scrollDownBtn) {
+      _scrollDownBtn.classList.toggle("visible", !isNearBottom());
+    }
+  }
+
+  function scrollToBottom(force) {
+    if (force || isNearBottom()) {
+      requestAnimationFrame(function () {
+        _container.scrollTop = _container.scrollHeight;
+      });
+    }
+  }
 
   // ─── Markdown Formatting ──────────────────────────────────────
 
@@ -57,12 +79,6 @@ const MessageComponent = (function () {
   }
 
   // ─── DOM Helpers ──────────────────────────────────────────────
-
-  function scrollToBottom() {
-    requestAnimationFrame(function () {
-      _container.scrollTop = _container.scrollHeight;
-    });
-  }
 
   function hideWelcome() {
     if (!_hasMessages && _welcomeScreen) {
@@ -111,11 +127,17 @@ const MessageComponent = (function () {
      * @param {HTMLElement} options.container - Messages container element
      * @param {HTMLElement|null} options.welcomeScreen - Welcome element (hidden on first message)
      * @param {string} options.extensionName - Name shown on assistant messages
+     * @param {HTMLElement|null} options.scrollDownBtn - Scroll down button element
      */
     init: function (options) {
       _container = options.container;
       _welcomeScreen = options.welcomeScreen || null;
       _extensionName = options.extensionName || "Greedant";
+      _scrollDownBtn = options.scrollDownBtn || null;
+
+      if (_container) {
+        _container.addEventListener("scroll", handleScroll);
+      }
     },
 
     /**
@@ -226,6 +248,14 @@ const MessageComponent = (function () {
         _welcomeScreen.style.display = "";
       }
       _hasMessages = false;
+      if (_scrollDownBtn) _scrollDownBtn.classList.remove("visible");
+    },
+
+    /**
+     * Scroll to the bottom of the messages (user-initiated).
+     */
+    scrollToBottom: function () {
+      scrollToBottom(true);
     },
   };
 })();
