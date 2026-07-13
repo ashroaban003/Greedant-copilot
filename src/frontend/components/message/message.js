@@ -163,7 +163,9 @@ const MessageComponent = (function () {
         (msg.isStreaming ? " streaming" : "");
       el.setAttribute("role", "article");
 
-      el.appendChild(createAvatar(msg.role));
+      if (msg.role === "assistant") {
+        el.appendChild(createAvatar(msg.role));
+      }
       el.appendChild(createBody(msg));
       _container.appendChild(el);
       scrollToBottom();

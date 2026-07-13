@@ -81,6 +81,28 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* User messages: right-aligned, no avatar */
+.message.user {
+  justify-content: flex-end;
+}
+
+.message.user .message-body {
+  flex: none;
+  max-width: 80%;
+  align-items: flex-end;
+}
+
+.message.user .message-content {
+  background: rgba(128, 128, 128, 0.15);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+}
+
+/* Assistant messages: left-aligned with avatar */
+.message.assistant {
+  justify-content: flex-start;
+}
+
 .message-avatar {
   width: 24px;
   height: 24px;
@@ -92,11 +114,6 @@
   font-size: 11px;
   font-weight: 600;
   margin-top: 2px;
-}
-
-.message.user .message-avatar {
-  background: var(--vscode-textLink-foreground);
-  color: var(--vscode-button-foreground, #fff);
 }
 
 .message.assistant .message-avatar {
