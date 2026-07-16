@@ -156,3 +156,11 @@
   color: var(--vscode-descriptionForeground);
   opacity: 0.7;
 }
+
+/* ── Input Toolbar ─────────────────────────────────────────── */
+.input-toolbar {
+  display: flex;
+  align-items: center;
+  padding-top: 6px;
+  gap: 8px;
+}

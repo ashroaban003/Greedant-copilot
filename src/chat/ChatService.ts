@@ -87,6 +87,17 @@ export class ChatService {
   }
 
   /**
+   * List available models from the underlying provider.
+   * Returns an empty array if the provider doesn't support listing.
+   */
+  async listModels(): Promise<string[]> {
+    if (this.provider.listModels) {
+      return this.provider.listModels();
+    }
+    return [];
+  }
+
+  /**
    * Swap the active LLM provider (e.g., when user changes settings).
    */
   setProvider(provider: LLMProvider): void {

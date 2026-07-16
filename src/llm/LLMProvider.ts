@@ -39,6 +39,13 @@ export interface LLMProvider {
   isAvailable(): Promise<ProviderStatus>;
 
   /**
+   * List available models from this provider.
+   * Returns an array of model name strings.
+   * Returns empty array if the provider doesn't support listing or is unreachable.
+   */
+  listModels?(): Promise<string[]>;
+
+  /**
    * Dispose of any resources held by this provider.
    * Called when the extension deactivates or provider switches.
    */

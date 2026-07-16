@@ -73,7 +73,7 @@ describe("ContextManager", () => {
 
       const result = manager.buildPromptWithContext("Test.");
 
-      expect(result).toContain("Do NOT repeat the selected code");
+      expect(result).toContain("Dont repeat selected code back to user");
     });
 
     it("includes instruction about context relevance", () => {
@@ -82,7 +82,7 @@ describe("ContextManager", () => {
 
       const result = manager.buildPromptWithContext("Test.");
 
-      expect(result).toContain("context may not be relevant");
+      expect(result).toContain("context is insufficient");
     });
 
     it("maintains correct prompt structure order", () => {

@@ -1,6 +1,9 @@
+import * as vscode from "vscode";
 import { ChatService } from "./ChatService";
 import { ChatMessage, ChatRole } from "./ChatMessage";
 import { ExtensionMessage, MSG } from "./MessageProtocol";
+import { ChatConfig } from "../config/ChatConfig";
+import { CONFIG_SECTION, CONFIG_OLLAMA_MODEL } from "../constants";
 
 /**
  * ChatController manages the lifecycle of chat requests.
@@ -11,11 +14,13 @@ import { ExtensionMessage, MSG } from "./MessageProtocol";
  */
 export class ChatController {
   private chatService: ChatService;
+  private config: ChatConfig;
   private activeRequests = new Map<string, boolean>();
   private messageCounter = 0;
 
-  constructor(chatService: ChatService) {
+  constructor(chatService: ChatService, config: ChatConfig) {
     this.chatService = chatService;
+    this.config = config;
   }
 
   /**
@@ -61,6 +66,30 @@ export class ChatController {
   }
 
   /**
+   * Fetch available models and determine the active model.
+   * Applies fallback logic: if configured model isn't in the list, use first available.
+   */
+  async handleModelListRequest(
+    postMessage: (message: ExtensionMessage) => void
+  ): Promise<void> {
+    const models = await this.getModelList();
+    const activeModel = await this.resolveActiveModel(models);
+    postMessage({ type: MSG.MODEL_LIST, models, activeModel });
+  }
+
+  /**
+   * Handle model selection from the webview.
+   * Persists the choice to VS Code workspace configuration.
+   * The UI updates optimistically, no response needed.
+   */
+  async handleModelSelection(
+    model: string,
+    _postMessage: (message: ExtensionMessage) => void
+  ): Promise<void> {
+    await this.updateModelConfig(model);
+  }
+
+  /**
    * Clear the chat history and notify the webview.
    */
   clearChat(postMessage: (message: ExtensionMessage) => void): void {
@@ -92,7 +121,41 @@ export class ChatController {
   // ─── Private helpers ───────────────────────────────────────────
 
   /**
-   * Display user message in the webview and add to history.
+   * Fetch models from the provider via ChatService.
+   */
+  private async getModelList(): Promise<string[]> {
+    return this.chatService.listModels();
+  }
+
+  /**
+   * Resolve the active model using fallback logic:
+   * 1. If models list is empty, returns empty string (no models available)
+   * 2. If configured model is in the list, use it
+   * 3. Otherwise, fallback to first model and persist
+   */
+  private async resolveActiveModel(models: string[]): Promise<string> {
+    if (models.length === 0) {
+      return "";
+    }
+    const configured = this.config.ollamaModel;
+    if (models.includes(configured)) {
+      return configured;
+    }
+    const fallback = models[0];
+    await this.updateModelConfig(fallback);
+    return fallback;
+  }
+
+  /**
+   * Write the selected model to VS Code workspace configuration.
+   */
+  private async updateModelConfig(model: string): Promise<void> {
+    const config = vscode.workspace.getConfiguration(CONFIG_SECTION);
+    await config.update(CONFIG_OLLAMA_MODEL, model, vscode.ConfigurationTarget.Workspace);
+  }
+
+  /**
+   * Send the user message to the webview for display and add to history.
    */
   private processUserMessage(
     content: string,

@@ -21,11 +21,12 @@ export async function buildChatHtml(ctx: HtmlBuildContext): Promise<string> {
   const frontendRoot = path.join(ctx.extensionUri.fsPath, "src", "frontend");
   const pageDir = path.join(frontendRoot, "pages", "chat");
 
-  const [shell, headerHtml, messageHtml, inputHtml] = await Promise.all([
+  const [shell, headerHtml, messageHtml, inputHtml, modelSelectorHtml] = await Promise.all([
     fs.readFile(path.join(pageDir, "chat.html"), "utf8"),
     fs.readFile(path.join(frontendRoot, "components", "header", "header.html"), "utf8"),
     fs.readFile(path.join(frontendRoot, "components", "message", "message.html"), "utf8"),
     fs.readFile(path.join(frontendRoot, "components", "input", "input.html"), "utf8"),
+    fs.readFile(path.join(frontendRoot, "components", "model-selector", "model-selector.html"), "utf8"),
   ]);
 
   const uri = (relativePath: string) =>
@@ -41,6 +42,7 @@ export async function buildChatHtml(ctx: HtmlBuildContext): Promise<string> {
     .replace(/\{\{headerHtml\}\}/g, headerHtml)
     .replace(/\{\{messageHtml\}\}/g, messageHtml)
     .replace(/\{\{inputHtml\}\}/g, inputHtml)
+    .replace(/\{\{modelSelectorHtml\}\}/g, modelSelectorHtml)
     // Security
     .replace(/\{\{nonce\}\}/g, nonce)
     .replace(/\{\{cspSource\}\}/g, ctx.webview.cspSource)
@@ -49,11 +51,13 @@ export async function buildChatHtml(ctx: HtmlBuildContext): Promise<string> {
     .replace(/\{\{headerCssUri\}\}/g, uri("components/header/header.css"))
     .replace(/\{\{messageCssUri\}\}/g, uri("components/message/message.css"))
     .replace(/\{\{inputCssUri\}\}/g, uri("components/input/input.css"))
+    .replace(/\{\{modelSelectorCssUri\}\}/g, uri("components/model-selector/model-selector.css"))
     // JS
     .replace(/\{\{iconsJsUri\}\}/g, uri("shared/icons.js"))
     .replace(/\{\{messageJsUri\}\}/g, uri("components/message/message.js"))
     .replace(/\{\{headerJsUri\}\}/g, uri("components/header/header.js"))
     .replace(/\{\{inputJsUri\}\}/g, uri("components/input/input.js"))
+    .replace(/\{\{modelSelectorJsUri\}\}/g, uri("components/model-selector/model-selector.js"))
     .replace(/\{\{chatJsUri\}\}/g, uri("pages/chat/chat.js"))
     // Config
     .replace(/\{\{extensionName\}\}/g, EXTENSION_NAME)

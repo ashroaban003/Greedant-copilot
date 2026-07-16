@@ -36,7 +36,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const contextManager = new ContextManager(selectionProvider);
 
   const chatService = new ChatService(provider, config, contextManager);
-  const chatController = new ChatController(chatService);
+  const chatController = new ChatController(chatService, config);
 
   viewProvider = new GreedantViewProvider(context.extensionUri, chatController, config);
   context.subscriptions.push(

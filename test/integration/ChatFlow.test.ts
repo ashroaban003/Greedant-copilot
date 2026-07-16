@@ -38,7 +38,7 @@ function buildPipeline(contextManager?: ContextManager) {
   const config = createMockConfig();
   const cm = contextManager ?? createMockContextManager();
   const chatService = new ChatService(provider, config, cm);
-  const controller = new ChatController(chatService);
+  const controller = new ChatController(chatService, config);
   return { controller, chatService, provider, contextManager: cm };
 }
 
@@ -272,7 +272,7 @@ describe("Integration: Context Flow", () => {
     const provider = new MockProvider();
     const config = createMockConfig();
     const chatService = new ChatService(provider, config, contextManager);
-    const controller = new ChatController(chatService);
+    const controller = new ChatController(chatService, config);
 
     // Spy on the provider to capture the request
     const streamChatSpy = jest.spyOn(provider, "streamChat");
@@ -287,7 +287,7 @@ describe("Integration: Context Flow", () => {
     expect(request.messages[0].role).toBe("system");
     expect(request.messages[0].content).toContain("You are a test assistant.");
     expect(request.messages[0].content).toContain("## Instructions");
-    expect(request.messages[0].content).toContain("Do NOT repeat the selected code");
+    expect(request.messages[0].content).toContain("Dont repeat selected code back to user");
   });
 
   it("includes selection context in LLM request when editor has selection", async () => {
@@ -306,7 +306,7 @@ File: test.ts (lines 1-3)
     const provider = new MockProvider();
     const config = createMockConfig();
     const chatService = new ChatService(provider, config, contextManager);
-    const controller = new ChatController(chatService);
+    const controller = new ChatController(chatService, config);
 
     const streamChatSpy = jest.spyOn(provider, "streamChat");
 
@@ -326,7 +326,7 @@ File: test.ts (lines 1-3)
     const provider = new MockProvider();
     const config = createMockConfig();
     const chatService = new ChatService(provider, config, contextManager);
-    const controller = new ChatController(chatService);
+    const controller = new ChatController(chatService, config);
 
     const streamChatSpy = jest.spyOn(provider, "streamChat");
 
@@ -346,7 +346,7 @@ File: test.ts (lines 1-3)
     const provider = new MockProvider();
     const config = createMockConfig();
     const chatService = new ChatService(provider, config, contextManager);
-    const controller = new ChatController(chatService);
+    const controller = new ChatController(chatService, config);
 
     const streamChatSpy = jest.spyOn(provider, "streamChat");
 
@@ -371,7 +371,7 @@ File: test.ts (lines 1-3)
     const provider = new MockProvider();
     const config = createMockConfig();
     const chatService = new ChatService(provider, config, contextManager);
-    const controller = new ChatController(chatService);
+    const controller = new ChatController(chatService, config);
 
     const streamChatSpy = jest.spyOn(provider, "streamChat");
 
@@ -397,7 +397,7 @@ File: test.ts (lines 1-3)
     const provider = new MockProvider();
     const config = createMockConfig();
     const chatService = new ChatService(provider, config, contextManager);
-    const controller = new ChatController(chatService);
+    const controller = new ChatController(chatService, config);
 
     const streamChatSpy = jest.spyOn(provider, "streamChat");
 

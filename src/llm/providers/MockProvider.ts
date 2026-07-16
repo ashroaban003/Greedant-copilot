@@ -35,6 +35,10 @@ export class MockProvider implements LLMProvider {
     return { available: true, provider: this.name, model: "mock" };
   }
 
+  async listModels(): Promise<string[]> {
+    return ["qwen2.5-coder:3b", "llama3:8b", "codellama:7b"];
+  }
+
   dispose(): void {}
 
   private pickResponse(request: LLMRequest): string {

@@ -89,6 +89,14 @@ export class GreedantViewProvider implements vscode.WebviewViewProvider {
 
       case MSG.CANCEL_REQUEST:
         break;
+
+      case MSG.REQUEST_MODELS:
+        await this.chatController.handleModelListRequest((msg) => this.postMessage(msg));
+        break;
+
+      case MSG.SELECT_MODEL:
+        await this.chatController.handleModelSelection(message.model, (msg) => this.postMessage(msg));
+        break;
     }
   }
 
@@ -97,6 +105,8 @@ export class GreedantViewProvider implements vscode.WebviewViewProvider {
     if (!status.available && status.error) {
       this.postMessage({ type: MSG.ERROR, error: status.error });
     }
+    // Eagerly send model list on ready
+    await this.chatController.handleModelListRequest((msg) => this.postMessage(msg));
   }
 
   private postMessage(message: ExtensionMessage): void {

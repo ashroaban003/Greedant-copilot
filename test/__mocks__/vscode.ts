@@ -4,6 +4,7 @@
 const workspace = {
   getConfiguration: jest.fn(() => ({
     get: jest.fn((key: string, defaultValue: any) => defaultValue),
+    update: jest.fn(async () => {}),
   })),
 };
 
@@ -69,4 +70,8 @@ const Uri = {
   file: jest.fn((path: string) => ({ fsPath: path, toString: () => path })),
 };
 
-export { workspace, window, commands, Uri };
+enum ConfigurationTarget {
+  Workspace = 2,
+}
+
+export { workspace, window, commands, Uri, ConfigurationTarget };

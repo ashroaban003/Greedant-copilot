@@ -52,7 +52,7 @@ function createController(providerOverrides: Partial<LLMProvider> = {}) {
   const config = createMockConfig();
   const contextManager = createMockContextManager();
   const chatService = new ChatService(provider, config, contextManager);
-  const controller = new ChatController(chatService);
+  const controller = new ChatController(chatService, config);
   return { controller, provider, chatService };
 }
 
@@ -266,6 +266,127 @@ describe("ChatController", () => {
     it("returns false when no requests are active", () => {
       const { controller } = createController();
       expect(controller.isSessionBusy("any")).toBe(false);
+    });
+  });
+
+  describe("handleModelListRequest", () => {
+    it("posts MODEL_LIST with models and active model when configured model is in list", async () => {
+      const { controller } = createController({
+        listModels: jest.fn(async () => ["llama3", "test", "codellama"]),
+      });
+
+      const messages = await collectMessages((post) =>
+        controller.handleModelListRequest(post)
+      );
+
+      expect(messages).toHaveLength(1);
+      expect(messages[0]).toEqual({
+        type: MSG.MODEL_LIST,
+        models: ["llama3", "test", "codellama"],
+        activeModel: "test",
+      });
+    });
+
+    it("returns empty activeModel when model list is empty", async () => {
+      const { controller } = createController({
+        listModels: jest.fn(async () => []),
+      });
+
+      const messages = await collectMessages((post) =>
+        controller.handleModelListRequest(post)
+      );
+
+      expect(messages).toHaveLength(1);
+      expect(messages[0]).toEqual({
+        type: MSG.MODEL_LIST,
+        models: [],
+        activeModel: "",
+      });
+    });
+
+    it("falls back to first model when configured model is not in list", async () => {
+      const { controller } = createController({
+        listModels: jest.fn(async () => ["llama3", "codellama"]),
+      });
+
+      const messages = await collectMessages((post) =>
+        controller.handleModelListRequest(post)
+      );
+
+      expect(messages).toHaveLength(1);
+      expect(messages[0]).toEqual({
+        type: MSG.MODEL_LIST,
+        models: ["llama3", "codellama"],
+        activeModel: "llama3",
+      });
+    });
+
+    it("persists fallback model to workspace config", async () => {
+      const { workspace } = require("vscode");
+      const mockUpdate = jest.fn(async () => {});
+      workspace.getConfiguration.mockReturnValue({
+        get: jest.fn((key: string, defaultValue: any) => defaultValue),
+        update: mockUpdate,
+      });
+
+      const { controller } = createController({
+        listModels: jest.fn(async () => ["llama3", "codellama"]),
+      });
+
+      await collectMessages((post) =>
+        controller.handleModelListRequest(post)
+      );
+
+      expect(mockUpdate).toHaveBeenCalledWith(
+        "ollama.model",
+        "llama3",
+        2 // ConfigurationTarget.Workspace
+      );
+    });
+
+    it("returns empty models when provider has no listModels method", async () => {
+      const { controller } = createController();
+      // Default mock provider has no listModels
+
+      const messages = await collectMessages((post) =>
+        controller.handleModelListRequest(post)
+      );
+
+      expect(messages).toHaveLength(1);
+      expect(messages[0]).toEqual({
+        type: MSG.MODEL_LIST,
+        models: [],
+        activeModel: "",
+      });
+    });
+  });
+
+  describe("handleModelSelection", () => {
+    it("persists selected model to workspace config", async () => {
+      const { workspace } = require("vscode");
+      const mockUpdate = jest.fn(async () => {});
+      workspace.getConfiguration.mockReturnValue({
+        get: jest.fn((key: string, defaultValue: any) => defaultValue),
+        update: mockUpdate,
+      });
+
+      const { controller } = createController();
+      const messages: ExtensionMessage[] = [];
+      await controller.handleModelSelection("codellama", (m) => messages.push(m));
+
+      expect(mockUpdate).toHaveBeenCalledWith(
+        "ollama.model",
+        "codellama",
+        2 // ConfigurationTarget.Workspace
+      );
+    });
+
+    it("does NOT post any message back", async () => {
+      const { controller } = createController();
+      const messages: ExtensionMessage[] = [];
+      await controller.handleModelSelection("codellama", (m) => messages.push(m));
+
+      expect(messages).toHaveLength(0);
     });
   });
 

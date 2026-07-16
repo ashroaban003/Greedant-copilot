@@ -4,7 +4,7 @@
  * Initializes all components and wires them to the VS Code message bus.
  * This is the only file that knows about all components — it's the glue.
  *
- * Components used: MessageComponent, InputComponent, HeaderComponent
+ * Components used: MessageComponent, InputComponent, HeaderComponent, ModelSelectorComponent
  * Shared: Icons
  */
 (function () {
@@ -41,6 +41,15 @@
   HeaderComponent.init({
     onClear: function () {
       vscode.postMessage({ type: "clearChat" });
+    },
+  });
+
+  ModelSelectorComponent.init({
+    onSelect: function (model) {
+      vscode.postMessage({ type: "selectModel", model: model });
+    },
+    onOpen: function () {
+      vscode.postMessage({ type: "requestModels" });
     },
   });
 
@@ -87,6 +96,10 @@
 
       case "clearChat":
         MessageComponent.clear();
+        break;
+
+      case "modelList":
+        ModelSelectorComponent.update(msg.models, msg.activeModel);
         break;
     }
   });
