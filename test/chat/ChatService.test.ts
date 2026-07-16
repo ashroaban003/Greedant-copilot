@@ -6,6 +6,8 @@ import {
   FinishReason,
 } from "../../src/llm/LLMTypes";
 import { ChatConfig } from "../../src/config/ChatConfig";
+import { ContextManager } from "../../src/context/ContextManager";
+import { SelectionProvider } from "../../src/context/providers/SelectionProvider";
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -40,17 +42,26 @@ function createMockConfig(): ChatConfig {
   } as unknown as ChatConfig;
 }
 
+function createMockContextManager(context: string | null = null): ContextManager {
+  const mockSelectionProvider = {
+    getContext: jest.fn(() => context),
+  } as unknown as SelectionProvider;
+  return new ContextManager(mockSelectionProvider);
+}
+
 // ─── Tests ───────────────────────────────────────────────────────
 
 describe("ChatService", () => {
   let service: ChatService;
   let mockProvider: LLMProvider;
   let mockConfig: ChatConfig;
+  let mockContextManager: ContextManager;
 
   beforeEach(() => {
     mockProvider = createMockProvider();
     mockConfig = createMockConfig();
-    service = new ChatService(mockProvider, mockConfig);
+    mockContextManager = createMockContextManager();
+    service = new ChatService(mockProvider, mockConfig, mockContextManager);
   });
 
   describe("sendMessageStreaming", () => {
@@ -75,15 +86,14 @@ describe("ChatService", () => {
       expect(history[1]).toEqual({ role: "assistant", content: "chunk1chunk2" });
     });
 
-    it("includes system prompt in messages sent to provider", async () => {
+    it("includes system prompt with instructions in messages sent to provider", async () => {
       for await (const _ of service.sendMessageStreaming("hi")) {
         // consume
       }
       const call = (mockProvider.streamChat as jest.Mock).mock.calls[0][0] as LLMRequest;
-      expect(call.messages[0]).toEqual({
-        role: "system",
-        content: "You are a test assistant.",
-      });
+      expect(call.messages[0].role).toBe("system");
+      expect(call.messages[0].content).toContain("You are a test assistant.");
+      expect(call.messages[0].content).toContain("## Instructions");
     });
 
     it("includes conversation history in subsequent calls", async () => {
@@ -93,11 +103,10 @@ describe("ChatService", () => {
       for await (const _ of service.sendMessageStreaming("second")) {}
 
       const call = (mockProvider.streamChat as jest.Mock).mock.calls[1][0] as LLMRequest;
-      // system + user1 + assistant1 + user2
-      expect(call.messages).toHaveLength(4);
-      expect(call.messages[1]).toEqual({ role: "user", content: "first" });
-      expect(call.messages[2]).toEqual({ role: "assistant", content: "chunk1chunk2" });
-      expect(call.messages[3]).toEqual({ role: "user", content: "second" });
+      // system + user (single-turn mode only sends system + current user)
+      expect(call.messages).toHaveLength(2);
+      expect(call.messages[0].role).toBe("system");
+      expect(call.messages[1]).toEqual({ role: "user", content: "second" });
     });
 
     it("propagates provider stream errors", async () => {
@@ -107,7 +116,7 @@ describe("ChatService", () => {
           throw new Error("stream broken");
         }),
       });
-      const errorService = new ChatService(errorProvider, mockConfig);
+      const errorService = new ChatService(errorProvider, mockConfig, mockContextManager);
 
       const chunks: LLMStreamChunk[] = [];
       await expect(async () => {
@@ -116,6 +125,19 @@ describe("ChatService", () => {
         }
       }).rejects.toThrow("stream broken");
       expect(chunks).toHaveLength(1);
+    });
+
+    it("includes selection context in system prompt when available", async () => {
+      const contextWithSelection = createMockContextManager("# Selected Code\nconst x = 1;");
+      const serviceWithContext = new ChatService(mockProvider, mockConfig, contextWithSelection);
+
+      for await (const _ of serviceWithContext.sendMessageStreaming("explain")) {
+        // consume
+      }
+
+      const call = (mockProvider.streamChat as jest.Mock).mock.calls[0][0] as LLMRequest;
+      expect(call.messages[0].content).toContain("# Selected Code");
+      expect(call.messages[0].content).toContain("const x = 1;");
     });
   });
 
@@ -133,7 +155,7 @@ describe("ChatService", () => {
           error: "cannot connect",
         })),
       });
-      const svc = new ChatService(unavailable, mockConfig);
+      const svc = new ChatService(unavailable, mockConfig, mockContextManager);
       const result = await svc.checkAvailability();
       expect(result.available).toBe(false);
       expect(result.error).toBe("cannot connect");

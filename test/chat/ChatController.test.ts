@@ -4,6 +4,8 @@ import { ExtensionMessage, MSG } from "../../src/chat/MessageProtocol";
 import { LLMProvider } from "../../src/llm/LLMProvider";
 import { FinishReason, LLMStreamChunk } from "../../src/llm/LLMTypes";
 import { ChatConfig } from "../../src/config/ChatConfig";
+import { ContextManager } from "../../src/context/ContextManager";
+import { SelectionProvider } from "../../src/context/providers/SelectionProvider";
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -38,10 +40,18 @@ function createMockConfig(): ChatConfig {
   } as unknown as ChatConfig;
 }
 
+function createMockContextManager(): ContextManager {
+  const mockSelectionProvider = {
+    getContext: jest.fn(() => null),
+  } as unknown as SelectionProvider;
+  return new ContextManager(mockSelectionProvider);
+}
+
 function createController(providerOverrides: Partial<LLMProvider> = {}) {
   const provider = createMockProvider(providerOverrides);
   const config = createMockConfig();
-  const chatService = new ChatService(provider, config);
+  const contextManager = createMockContextManager();
+  const chatService = new ChatService(provider, config, contextManager);
   const controller = new ChatController(chatService);
   return { controller, provider, chatService };
 }

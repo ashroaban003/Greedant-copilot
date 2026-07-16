@@ -2,29 +2,42 @@ import { LLMProvider } from "../llm/LLMProvider";
 import { LLMMessage, LLMStreamChunk } from "../llm/LLMTypes";
 import { ChatConfig } from "../config/ChatConfig";
 import { ChatRole } from "./ChatMessage";
+import { ContextManager } from "../context/ContextManager";
 
 /**
- * ChatService orchestrates the chat flow between the user, conversation
- * history, and the active LLM provider.
+ * ChatService orchestrates the chat flow between the user and the LLM provider.
  *
- * This service is provider-agnostic — it works with any LLMProvider
- * implementation and manages the conversation state.
+ * This service is provider-agnostic — it works with any LLMProvider implementation.
+ *
+ * Single-Turn Mode:
+ * - Only sends system prompt + current user message to LLM (no history)
+ * - Conversation history is retained locally for user reference
+ *
+ * Context Integration:
+ * - Gathers editor context (selection or cursor line) before each message
+ * - Enhances system prompt with code context
  */
 export class ChatService {
   private provider: LLMProvider;
   private config: ChatConfig;
+  private contextManager: ContextManager;
   private conversationHistory: LLMMessage[] = [];
 
-  /** Maximum number of messages to retain in history (user + assistant pairs) */
+  /** Maximum messages to retain in history */
   private static readonly MAX_HISTORY_MESSAGES = 50;
 
-  constructor(provider: LLMProvider, config: ChatConfig) {
+  constructor(
+    provider: LLMProvider,
+    config: ChatConfig,
+    contextManager: ContextManager
+  ) {
     this.provider = provider;
     this.config = config;
+    this.contextManager = contextManager;
   }
 
   /**
-   * Add a user prompt to the conversation history.
+   * Add a user prompt to conversation history.
    */
   addUserPrompt(content: string): void {
     this.addToHistory(ChatRole.User, content);
@@ -32,12 +45,13 @@ export class ChatService {
 
   /**
    * Stream the assistant response chunk by chunk.
-   * Does NOT add the user message to history — caller must call addUserPrompt first.
+   * Single-turn mode: only sends system prompt + current user message to LLM.
+   * History is stored locally but NOT sent to LLM.
    */
   async *sendMessageStreaming(
     userMessage: string
   ): AsyncGenerator<LLMStreamChunk, void, unknown> {
-    const messages = this.buildMessages();
+    const messages = this.buildMessages(userMessage);
 
     let fullResponse = "";
 
@@ -46,6 +60,7 @@ export class ChatService {
       yield chunk;
     }
 
+    // Store assistant response in local history
     this.addToHistory(ChatRole.Assistant, fullResponse);
   }
 
@@ -65,7 +80,7 @@ export class ChatService {
   }
 
   /**
-   * Get the current conversation history (for persistence/display).
+   * Get the current conversation history.
    */
   getHistory(): LLMMessage[] {
     return [...this.conversationHistory];
@@ -80,12 +95,18 @@ export class ChatService {
   }
 
   /**
-   * Build the full message array including system prompt.
+   * Build messages for single-turn request.
+   * Only sends: system prompt (with context) + current user message.
+   * History is NOT sent to LLM.
    */
-  private buildMessages(): LLMMessage[] {
+  private buildMessages(userMessage: string): LLMMessage[] {
+    const systemPrompt = this.contextManager.buildPromptWithContext(
+      this.config.systemPrompt
+    );
+
     return [
-      { role: "system", content: this.config.systemPrompt },
-      ...this.conversationHistory,
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userMessage },
     ];
   }
 
@@ -98,9 +119,7 @@ export class ChatService {
   }
 
   /**
-   * Trim conversation history to MAX_HISTORY_MESSAGES.
-   * Keeps the most recent messages (end of array) and drops the oldest (start of array).
-   * Example: if MAX is 50 and length is 60, slice(10) keeps indices 10–59 (newest 50).
+   * Trim history to MAX_HISTORY_MESSAGES.
    */
   private trimHistory(): void {
     if (this.conversationHistory.length > ChatService.MAX_HISTORY_MESSAGES) {

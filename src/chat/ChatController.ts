@@ -92,7 +92,7 @@ export class ChatController {
   // ─── Private helpers ───────────────────────────────────────────
 
   /**
-   * Send the user message to the webview for display and add to history.
+   * Display user message in the webview and add to history.
    */
   private processUserMessage(
     content: string,

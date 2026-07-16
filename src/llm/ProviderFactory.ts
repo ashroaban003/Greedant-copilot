@@ -9,7 +9,7 @@ import { ChatConfig } from "../config/ChatConfig";
  * about every provider implementation.
  */
 export function createProvider(config: ChatConfig): LLMProvider {
-  //return new MockProvider();
+  // return new MockProvider();
   switch (config.provider) {
     case "ollama":
       return new OllamaProvider(config);
