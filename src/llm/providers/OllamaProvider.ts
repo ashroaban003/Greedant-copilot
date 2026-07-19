@@ -107,6 +107,26 @@ export class OllamaProvider implements LLMProvider {
     }
   }
 
+  async listModels(): Promise<string[]> {
+    try {
+      const raw = await httpRequest({
+        baseUrl: this.baseUrl,
+        path: "/api/tags",
+        method: "GET",
+      });
+      const data = JSON.parse(raw) as { models?: Array<{ name: string }> };
+      const models = data.models;
+      if (!Array.isArray(models)) {
+        return [];
+      }
+      return models
+        .map((m) => m.name)
+        .filter((name) => typeof name === "string" && name.length > 0);
+    } catch {
+      return [];
+    }
+  }
+
   async isAvailable(): Promise<ProviderStatus> {
     try {
       const raw = await httpRequest({

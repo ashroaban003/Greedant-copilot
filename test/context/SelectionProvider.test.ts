@@ -127,7 +127,7 @@ describe("SelectionProvider", () => {
       const result = provider.getContext();
 
       expect(result).toContain("# Selected Code");
-      expect(result).toContain("This is the code the user currently has selected");
+      expect(result).toContain("Focus only on code between");
     });
 
     it("handles different language IDs", () => {

@@ -1,0 +1,26 @@
+<!-- Model Selector Component -->
+<div class="model-selector-container" id="modelSelectorContainer">
+  <button
+    class="model-selector-chip"
+    id="modelSelectorChip"
+    type="button"
+    aria-haspopup="listbox"
+    aria-expanded="false"
+    aria-label="Select model"
+    title="Change model"
+  >
+    <span class="model-selector-name" id="modelSelectorName">Loading...</span>
+    <svg class="model-selector-chevron" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <path d="M4 6l4 4 4-4"/>
+    </svg>
+  </button>
+  <div
+    class="model-dropdown"
+    id="modelDropdown"
+    role="listbox"
+    aria-label="Available models"
+    hidden
+  >
+    <div class="model-dropdown-list" id="modelDropdownList"></div>
+  </div>
+</div>
