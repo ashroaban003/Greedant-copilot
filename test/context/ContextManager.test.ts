@@ -1,54 +1,42 @@
-import { ContextManager } from "../../src/context/ContextManager";
+import { ContextManager, ContextManagerDeps } from "../../src/context/ContextManager";
 import { SelectionProvider } from "../../src/context/providers/SelectionProvider";
+import { TokenBudget } from "../../src/context/TokenBudget";
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
-function createMockSelectionProvider(context: string | null = null): SelectionProvider {
-  return {
-    getContext: jest.fn(() => context),
+function createMockDeps(selectionContext: string | null = null): ContextManagerDeps {
+  const mockSelectionProvider = {
+    getContext: jest.fn(() => selectionContext),
   } as unknown as SelectionProvider;
+
+  return {
+    tokenBudget: new TokenBudget(),
+    selectionProvider: mockSelectionProvider,
+    activeFileProvider: { getFileCandidate: jest.fn(() => null) } as any,
+    openFilesProvider: { getFileCandidates: jest.fn(() => []) } as any,
+    grepProvider: { getFileCandidates: jest.fn(async () => []) } as any,
+  };
 }
 
 // ─── Tests ───────────────────────────────────────────────────────
 
 describe("ContextManager", () => {
-  describe("getSelectionContext", () => {
-    it("returns context from SelectionProvider", () => {
-      const mockProvider = createMockSelectionProvider("# Selected Code\nconst x = 1;");
-      const manager = new ContextManager(mockProvider);
-
-      const result = manager.getSelectionContext();
-
-      expect(result).toBe("# Selected Code\nconst x = 1;");
-      expect(mockProvider.getContext).toHaveBeenCalled();
-    });
-
-    it("returns null when SelectionProvider returns null", () => {
-      const mockProvider = createMockSelectionProvider(null);
-      const manager = new ContextManager(mockProvider);
-
-      const result = manager.getSelectionContext();
-
-      expect(result).toBeNull();
-    });
-  });
-
-  describe("buildPromptWithContext", () => {
+  describe("buildPromptWithDefaultContext", () => {
     it("appends instructions to base prompt", () => {
-      const mockProvider = createMockSelectionProvider(null);
-      const manager = new ContextManager(mockProvider);
+      const deps = createMockDeps(null);
+      const manager = new ContextManager(deps);
 
-      const result = manager.buildPromptWithContext("You are a helpful assistant.");
+      const result = manager.buildPromptWithDefaultContext("You are a helpful assistant.");
 
       expect(result).toContain("You are a helpful assistant.");
       expect(result).toContain("## Instructions");
     });
 
     it("includes selection context when available", () => {
-      const mockProvider = createMockSelectionProvider("# Selected Code\nfunction test() {}");
-      const manager = new ContextManager(mockProvider);
+      const deps = createMockDeps("# Selected Code\nfunction test() {}");
+      const manager = new ContextManager(deps);
 
-      const result = manager.buildPromptWithContext("Base prompt.");
+      const result = manager.buildPromptWithDefaultContext("Base prompt.");
 
       expect(result).toContain("Base prompt.");
       expect(result).toContain("## Instructions");
@@ -57,10 +45,10 @@ describe("ContextManager", () => {
     });
 
     it("does not include selection section when context is null", () => {
-      const mockProvider = createMockSelectionProvider(null);
-      const manager = new ContextManager(mockProvider);
+      const deps = createMockDeps(null);
+      const manager = new ContextManager(deps);
 
-      const result = manager.buildPromptWithContext("Base prompt.");
+      const result = manager.buildPromptWithDefaultContext("Base prompt.");
 
       expect(result).toContain("Base prompt.");
       expect(result).toContain("## Instructions");
@@ -68,28 +56,28 @@ describe("ContextManager", () => {
     });
 
     it("includes instruction about not repeating code", () => {
-      const mockProvider = createMockSelectionProvider(null);
-      const manager = new ContextManager(mockProvider);
+      const deps = createMockDeps(null);
+      const manager = new ContextManager(deps);
 
-      const result = manager.buildPromptWithContext("Test.");
+      const result = manager.buildPromptWithDefaultContext("Test.");
 
       expect(result).toContain("Dont repeat selected code back to user");
     });
 
     it("includes instruction about context relevance", () => {
-      const mockProvider = createMockSelectionProvider(null);
-      const manager = new ContextManager(mockProvider);
+      const deps = createMockDeps(null);
+      const manager = new ContextManager(deps);
 
-      const result = manager.buildPromptWithContext("Test.");
+      const result = manager.buildPromptWithDefaultContext("Test.");
 
       expect(result).toContain("context is insufficient");
     });
 
     it("maintains correct prompt structure order", () => {
-      const mockProvider = createMockSelectionProvider("# Selected Code\ncode here");
-      const manager = new ContextManager(mockProvider);
+      const deps = createMockDeps("# Selected Code\ncode here");
+      const manager = new ContextManager(deps);
 
-      const result = manager.buildPromptWithContext("Base prompt.");
+      const result = manager.buildPromptWithDefaultContext("Base prompt.");
 
       // Verify order: base prompt -> instructions -> separator -> context
       const baseIndex = result.indexOf("Base prompt.");

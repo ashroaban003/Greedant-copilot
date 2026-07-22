@@ -25,34 +25,43 @@ describe("MockProvider", () => {
       expect(response.content.length).toBeGreaterThan(0);
     });
 
-    it("responds to 'hello' with a greeting", async () => {
+    it("returns debug response showing the full prompt", async () => {
       const request: LLMRequest = {
         messages: [{ role: "user", content: "hello there" }],
       };
       const response = await provider.chat(request);
-      expect(response.content.toLowerCase()).toContain("greedant");
+      expect(response.content).toContain("Debug: Full Prompt");
+      expect(response.content).toContain("hello there");
     });
 
-    it("responds to 'async' with explanation", async () => {
+    it("shows message count in debug response", async () => {
       const request: LLMRequest = {
-        messages: [{ role: "user", content: "explain async await" }],
+        messages: [
+          { role: "system", content: "You are helpful" },
+          { role: "user", content: "explain async await" },
+        ],
       };
       const response = await provider.chat(request);
-      expect(response.content).toContain("async");
-    });
-
-    it("responds to unknown input with a generic response", async () => {
-      const request: LLMRequest = {
-        messages: [{ role: "user", content: "xyzzy" }],
-      };
-      const response = await provider.chat(request);
-      expect(response.content).toContain("help");
+      expect(response.content).toContain("Total messages:** 2");
     });
 
     it("handles empty messages gracefully", async () => {
       const request: LLMRequest = { messages: [] };
       const response = await provider.chat(request);
       expect(response.content.length).toBeGreaterThan(0);
+    });
+
+    it("returns JSON for keyword extraction requests", async () => {
+      const request: LLMRequest = {
+        messages: [
+          { role: "system", content: "You are a code analysis assistant. Extract keywords..." },
+          { role: "user", content: "USER QUERY: how to fix the error\n\nINITIAL KEYWORDS: error, fix\n\nRELEVANT CODE SNIPPETS:\n```\nclass ErrorHandler {}\n```" },
+        ],
+      };
+      const response = await provider.chat(request);
+      const parsed = JSON.parse(response.content);
+      expect(parsed).toHaveProperty("list1");
+      expect(parsed).toHaveProperty("list2");
     });
   });
 

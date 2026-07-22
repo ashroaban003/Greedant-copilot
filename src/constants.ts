@@ -19,11 +19,13 @@ export const CONFIG_SECTION = "greedant";
 export const CONFIG_PROVIDER = "provider";
 export const CONFIG_OLLAMA_BASE_URL = "ollama.baseUrl";
 export const CONFIG_OLLAMA_MODEL = "ollama.model";
+export const CONFIG_OLLAMA_CONTEXT_SIZE = "ollama.contextSize";
 export const CONFIG_SYSTEM_PROMPT = "systemPrompt";
 
 // Default values
 export const DEFAULT_PROVIDER = "ollama";
 export const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434";
 export const DEFAULT_OLLAMA_MODEL = "qwen2.5-coder:3b";
+export const DEFAULT_OLLAMA_CONTEXT_SIZE = 4096;
 export const DEFAULT_SYSTEM_PROMPT =
   "You are Greedant, a helpful AI coding assistant. You help developers write, understand, and debug code. Be concise, accurate, and helpful.";

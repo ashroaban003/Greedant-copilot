@@ -10,20 +10,12 @@ import { ChatService } from "./chat/ChatService";
 import { ChatController } from "./chat/ChatController";
 import { GreedantViewProvider } from "./frontend/GreedantViewProvider";
 import { SelectionProvider } from "./context/providers/SelectionProvider";
+import { ActiveFileProvider } from "./context/providers/ActiveFileProvider";
+import { OpenFilesProvider } from "./context/providers/OpenFilesProvider";
+import { GrepProvider } from "./context/providers/GrepProvider";
+import { TokenBudget } from "./context/TokenBudget";
 import { ContextManager } from "./context/ContextManager";
-
-/**
- * Greedant extension entry point.
- *
- * Architecture:
- *   extension.ts (wiring)
- *     -> GreedantViewProvider (webview management)
- *       -> ChatController (request lifecycle)
- *         -> ChatService (orchestration)
- *           -> ContextManager (context aggregation)
- *             -> SelectionProvider (editor context)
- *           -> LLMProvider (Ollama, etc.)
- */
+import { SmartKeywordExtractor } from "./agent/SmartKeywordExtractor";
 
 let viewProvider: GreedantViewProvider | undefined;
 
@@ -31,9 +23,24 @@ export function activate(context: vscode.ExtensionContext): void {
   const config = new ChatConfig();
   const provider = createProvider(config);
 
-  // Context providers
+  // Initialize smart keyword extractor with LLM provider
+  const smartKeywordExtractor = new SmartKeywordExtractor(provider);
+
+  // Initialize context providers as singletons
+  const tokenBudget = new TokenBudget();
   const selectionProvider = new SelectionProvider();
-  const contextManager = new ContextManager(selectionProvider);
+  const activeFileProvider = new ActiveFileProvider();
+  const openFilesProvider = new OpenFilesProvider();
+  const grepProvider = new GrepProvider();
+
+  const contextManager = new ContextManager({
+    tokenBudget,
+    selectionProvider,
+    activeFileProvider,
+    openFilesProvider,
+    grepProvider,
+    smartKeywordExtractor,
+  });
 
   const chatService = new ChatService(provider, config, contextManager);
   const chatController = new ChatController(chatService, config);
