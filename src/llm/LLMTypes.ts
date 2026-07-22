@@ -52,3 +52,11 @@ export interface ProviderStatus {
   error?: string;
 }
 
+/** Model metadata retrieved from provider */
+export interface ModelInfo {
+  /** Model name/identifier */
+  name: string;
+  /** Context window size in tokens */
+  contextLength: number;
+}
+

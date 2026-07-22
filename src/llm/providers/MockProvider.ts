@@ -1,5 +1,5 @@
 import { LLMProvider } from "../LLMProvider";
-import { LLMRequest, LLMResponse, LLMStreamChunk, ProviderStatus, FinishReason } from "../LLMTypes";
+import { LLMRequest, LLMResponse, LLMStreamChunk, ProviderStatus, FinishReason, ModelInfo } from "../LLMTypes";
 
 /**
  * Mock LLM provider for UI development and testing.
@@ -39,52 +39,41 @@ export class MockProvider implements LLMProvider {
     return ["qwen2.5-coder:3b", "llama3:8b", "codellama:7b"];
   }
 
+  async getModelInfo(): Promise<ModelInfo> {
+    return { name: "mock", contextLength: 4096 };
+  }
+
   dispose(): void {}
 
   private pickResponse(request: LLMRequest): string {
-    const userMsg = request.messages[request.messages.length - 1]?.content || "";
-    const lower = userMsg.toLowerCase();
-
-    // Debug command: return the full context/system prompt
-    if (lower.includes("debug context") || lower.includes("show context") || lower.includes("show prompt")) {
-      return this.formatDebugResponse(request);
-    }
-
-    if (lower.includes("hello") || lower.includes("hi")) {
-      return "Hey! I'm Greedant, your local AI coding assistant. How can I help you today?";
-    }
-
-    if (lower.includes("async") || lower.includes("await")) {
-      return "In JavaScript, `async/await` is syntactic sugar over Promises.\n\nAn `async` function always returns a Promise. The `await` keyword pauses execution until the Promise resolves:\n\n```javascript\nasync function fetchData() {\n  const response = await fetch('/api/data');\n  const data = await response.json();\n  return data;\n}\n```\n\nIt makes asynchronous code read like synchronous code, which is much easier to follow.";
-    }
-
-    if (lower.includes("solid")) {
-      return "The SOLID principles are:\n\n**S** — Single Responsibility: A class should have one reason to change.\n\n**O** — Open/Closed: Open for extension, closed for modification.\n\n**L** — Liskov Substitution: Subtypes must be substitutable for their base types.\n\n**I** — Interface Segregation: Prefer small, specific interfaces over large general ones.\n\n**D** — Dependency Inversion: Depend on abstractions, not concretions.";
-    }
-
-    if (lower.includes("duplicate") || lower.includes("python")) {
-      return "Here's a clean way to find duplicates in a Python list:\n\n```python\ndef find_duplicates(items):\n    seen = set()\n    duplicates = set()\n    for item in items:\n        if item in seen:\n            duplicates.add(item)\n        seen.add(item)\n    return list(duplicates)\n```\n\nThis runs in O(n) time using sets for fast lookups.";
-    }
-
-    return "I can help with that. Could you give me a bit more context about what you're working on? I'm good with code explanations, debugging, writing functions, and general programming questions.";
+    // Always return the full prompt for debugging/testing context gathering
+    return this.formatDebugResponse(request);
   }
 
   /**
-   * Format debug response showing the full system prompt and context.
+   * Format debug response showing the full system prompt, context, and token budget.
    */
   private formatDebugResponse(request: LLMRequest): string {
     const lines: string[] = [];
     
-    lines.push("## Debug: Full Request Context\n");
+    lines.push("## Debug: Full Prompt Sent to LLM\n");
+    lines.push(`**Model context window:** 4096 tokens`);
     lines.push(`**Total messages:** ${request.messages.length}\n`);
 
     for (let i = 0; i < request.messages.length; i++) {
       const msg = request.messages[i];
-      lines.push(`### Message ${i + 1} (${msg.role})\n`);
+      const estimatedTokens = Math.ceil(msg.content.length / 3.5);
+      lines.push(`### Message ${i + 1} — ${msg.role} (~${estimatedTokens} tokens)\n`);
       lines.push("```");
       lines.push(msg.content);
       lines.push("```\n");
     }
+
+    const totalChars = request.messages.reduce((sum, m) => sum + m.content.length, 0);
+    const totalTokens = Math.ceil(totalChars / 3.5);
+    lines.push(`---`);
+    lines.push(`**Total prompt tokens (estimated):** ~${totalTokens}`);
+    lines.push(`**Remaining for response:** ~${4096 - totalTokens}`);
 
     return lines.join("\n");
   }

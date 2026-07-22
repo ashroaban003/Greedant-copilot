@@ -14,14 +14,16 @@ import { ContextManager } from "../context/ContextManager";
  * - Conversation history is retained locally for user reference
  *
  * Context Integration:
- * - Gathers editor context (selection or cursor line) before each message
- * - Enhances system prompt with code context
+ * - Gathers smart context (selection, active file, open files, grep) before each message
+ * - Dynamically budgets context based on model's context window size
+ * - Enhances system prompt with ranked context items
  */
 export class ChatService {
   private provider: LLMProvider;
   private config: ChatConfig;
   private contextManager: ContextManager;
   private conversationHistory: LLMMessage[] = [];
+  private modelInfoFetched = false;
 
   /** Maximum messages to retain in history */
   private static readonly MAX_HISTORY_MESSAGES = 50;
@@ -34,6 +36,30 @@ export class ChatService {
     this.provider = provider;
     this.config = config;
     this.contextManager = contextManager;
+  }
+
+  /**
+   * Fetch and cache model info (context window size).
+   * Called lazily on first message or on model change.
+   */
+  async fetchModelInfo(): Promise<void> {
+    if (this.modelInfoFetched) { return; }
+
+    if (this.provider.getModelInfo) {
+      const info = await this.provider.getModelInfo();
+      if (info) {
+        this.contextManager.setContextWindow(info.contextLength);
+      }
+    }
+    this.modelInfoFetched = true;
+  }
+
+  /**
+   * Force re-fetch model info (e.g., after model change).
+   */
+  async refreshModelInfo(): Promise<void> {
+    this.modelInfoFetched = false;
+    await this.fetchModelInfo();
   }
 
   /**
@@ -51,7 +77,10 @@ export class ChatService {
   async *sendMessageStreaming(
     userMessage: string
   ): AsyncGenerator<LLMStreamChunk, void, unknown> {
-    const messages = this.buildMessages(userMessage);
+    // Ensure we have model info for context budgeting
+    await this.fetchModelInfo();
+
+    const messages = await this.buildMessages(userMessage);
 
     let fullResponse = "";
 
@@ -103,17 +132,28 @@ export class ChatService {
   setProvider(provider: LLMProvider): void {
     this.provider.dispose();
     this.provider = provider;
+    // Reset model info so it's re-fetched with new provider
+    this.modelInfoFetched = false;
   }
 
   /**
    * Build messages for single-turn request.
-   * Only sends: system prompt (with context) + current user message.
-   * History is NOT sent to LLM.
+   * Now async — gathers smart context based on user message keywords.
    */
-  private buildMessages(userMessage: string): LLMMessage[] {
-    const systemPrompt = this.contextManager.buildPromptWithContext(
-      this.config.systemPrompt
-    );
+  private async buildMessages(userMessage: string): Promise<LLMMessage[]> {
+    let systemPrompt: string;
+
+    try {
+      systemPrompt = await this.contextManager.buildPromptWithContext(
+        this.config.systemPrompt,
+        userMessage
+      );
+    } catch {
+      // Context gathering failed — fall back to basic prompt
+      systemPrompt = this.contextManager.buildPromptWithContextSync(
+        this.config.systemPrompt
+      );
+    }
 
     return [
       { role: "system", content: systemPrompt },
