@@ -1,4 +1,4 @@
-import { LLMRequest, LLMResponse, LLMStreamChunk, ProviderStatus } from "./LLMTypes";
+import { LLMRequest, LLMResponse, LLMStreamChunk, ProviderStatus, ModelInfo } from "./LLMTypes";
 
 /**
  * Abstract interface for LLM providers.
@@ -44,6 +44,12 @@ export interface LLMProvider {
    * Returns empty array if the provider doesn't support listing or is unreachable.
    */
   listModels?(): Promise<string[]>;
+
+  /**
+   * Get model metadata including context window size.
+   * Returns null if the provider doesn't support this or info is unavailable.
+   */
+  getModelInfo?(model?: string): Promise<ModelInfo | null>;
 
   /**
    * Dispose of any resources held by this provider.

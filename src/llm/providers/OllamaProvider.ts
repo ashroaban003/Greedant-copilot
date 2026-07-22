@@ -5,6 +5,7 @@ import {
   LLMStreamChunk,
   ProviderStatus,
   FinishReason,
+  ModelInfo,
 } from "../LLMTypes";
 import { ChatConfig } from "../../config/ChatConfig";
 import { httpRequest, httpRequestStream } from "../HttpClient";
@@ -159,6 +160,47 @@ export class OllamaProvider implements LLMProvider {
     }
   }
 
+  async getModelInfo(model?: string): Promise<ModelInfo | null> {
+    const targetModel = model || this.model;
+    try {
+      const raw = await httpRequest({
+        baseUrl: this.baseUrl,
+        path: "/api/show",
+        method: "POST",
+        body: JSON.stringify({ model: targetModel }),
+      });
+      const data = JSON.parse(raw) as OllamaShowResponse;
+
+      // Extract context length from model_info or parameters
+      let contextLength = 4096; // Ollama default
+
+      if (data.model_info) {
+        // Look for context_length in model_info keys
+        for (const key of Object.keys(data.model_info)) {
+          if (key.includes("context_length")) {
+            const val = data.model_info[key];
+            if (typeof val === "number" && val > 0) {
+              contextLength = val;
+              break;
+            }
+          }
+        }
+      }
+
+      // Fallback: parse num_ctx from parameters string
+      if (contextLength === 4096 && data.parameters) {
+        const match = data.parameters.match(/num_ctx\s+(\d+)/);
+        if (match) {
+          contextLength = parseInt(match[1], 10);
+        }
+      }
+
+      return { name: targetModel, contextLength };
+    } catch {
+      return null;
+    }
+  }
+
   dispose(): void {}
 
   // ─── Private helpers ───────────────────────────────────────────
@@ -197,4 +239,9 @@ interface OllamaStreamChunk {
   model?: string;
   message?: { role: string; content: string };
   done: boolean;
+}
+
+interface OllamaShowResponse {
+  model_info?: Record<string, unknown>;
+  parameters?: string;
 }
