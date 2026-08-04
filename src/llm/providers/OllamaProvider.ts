@@ -161,6 +161,45 @@ export class OllamaProvider implements LLMProvider {
 
   dispose(): void {}
 
+  async getContextWindowSize(model?: string): Promise<number> {
+    const targetModel = model || this.model;
+    const configuredSize = this.config.ollamaContextSize;
+    
+    try {
+      const raw = await httpRequest({
+        baseUrl: this.baseUrl,
+        path: "/api/show",
+        method: "POST",
+        body: JSON.stringify({ model: targetModel }),
+      });
+      const data = JSON.parse(raw) as OllamaShowResponse;
+
+      // Extract context length from model_info
+      if (data.model_info) {
+        for (const key of Object.keys(data.model_info)) {
+          if (key.includes("context_length")) {
+            const val = data.model_info[key];
+            if (typeof val === "number" && val > 0) {
+              return val;
+            }
+          }
+        }
+      }
+
+      // Fallback: parse num_ctx from parameters string
+      if (data.parameters) {
+        const match = data.parameters.match(/num_ctx\s+(\d+)/);
+        if (match) {
+          return parseInt(match[1], 10);
+        }
+      }
+
+      return configuredSize;
+    } catch {
+      return configuredSize;
+    }
+  }
+
   // ─── Private helpers ───────────────────────────────────────────
 
   private buildRequestBody(model: string, request: LLMRequest, stream: boolean): string {
@@ -197,4 +236,9 @@ interface OllamaStreamChunk {
   model?: string;
   message?: { role: string; content: string };
   done: boolean;
+}
+
+interface OllamaShowResponse {
+  model_info?: Record<string, unknown>;
+  parameters?: string;
 }

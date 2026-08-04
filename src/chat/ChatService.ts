@@ -6,17 +6,8 @@ import { ContextManager } from "../context/ContextManager";
 
 /**
  * ChatService orchestrates the chat flow between the user and the LLM provider.
- *
  * This service is provider-agnostic — it works with any LLMProvider implementation.
- *
- * Single-Turn Mode:
- * - Only sends system prompt + current user message to LLM (no history)
- * - Conversation history is retained locally for user reference
- *
- * Context Integration:
- * - Gathers editor context (selection or cursor line) before each message
- * - Enhances system prompt with code context
- */
+*/
 export class ChatService {
   private provider: LLMProvider;
   private config: ChatConfig;
@@ -36,22 +27,26 @@ export class ChatService {
     this.contextManager = contextManager;
   }
 
-  /**
-   * Add a user prompt to conversation history.
-   */
+  async fetchAndSetContextWindow(model?: string): Promise<void> {
+    if (this.provider.getContextWindowSize) {
+      const size = await this.provider.getContextWindowSize(model);
+      if (size) {
+        this.contextManager.setContextWindow(size);
+      }
+    }
+  }
+
   addUserPrompt(content: string): void {
     this.addToHistory(ChatRole.User, content);
   }
 
   /**
    * Stream the assistant response chunk by chunk.
-   * Single-turn mode: only sends system prompt + current user message to LLM.
-   * History is stored locally but NOT sent to LLM.
    */
   async *sendMessageStreaming(
     userMessage: string
   ): AsyncGenerator<LLMStreamChunk, void, unknown> {
-    const messages = this.buildMessages(userMessage);
+    const messages = await this.buildMessages(userMessage);
 
     let fullResponse = "";
 
@@ -60,7 +55,6 @@ export class ChatService {
       yield chunk;
     }
 
-    // Store assistant response in local history
     this.addToHistory(ChatRole.Assistant, fullResponse);
   }
 
@@ -88,7 +82,6 @@ export class ChatService {
 
   /**
    * List available models from the underlying provider.
-   * Returns an empty array if the provider doesn't support listing.
    */
   async listModels(): Promise<string[]> {
     if (this.provider.listModels) {
@@ -105,15 +98,20 @@ export class ChatService {
     this.provider = provider;
   }
 
-  /**
-   * Build messages for single-turn request.
-   * Only sends: system prompt (with context) + current user message.
-   * History is NOT sent to LLM.
-   */
-  private buildMessages(userMessage: string): LLMMessage[] {
-    const systemPrompt = this.contextManager.buildPromptWithContext(
-      this.config.systemPrompt
-    );
+  private async buildMessages(userMessage: string): Promise<LLMMessage[]> {
+    let systemPrompt: string;
+
+    try {
+      systemPrompt = await this.contextManager.buildPromptWithContext(
+        this.config.systemPrompt,
+        userMessage
+      );
+    } catch {
+      // Context gathering failed — fall back to basic prompt
+      systemPrompt = this.contextManager.buildPromptWithDefaultContext(
+        this.config.systemPrompt
+      );
+    }
 
     return [
       { role: "system", content: systemPrompt },
@@ -121,9 +119,6 @@ export class ChatService {
     ];
   }
 
-  /**
-   * Add a message to history and trim if needed.
-   */
   private addToHistory(role: ChatRole, content: string): void {
     this.conversationHistory.push({ role, content });
     this.trimHistory();

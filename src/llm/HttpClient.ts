@@ -13,15 +13,6 @@ export interface HttpRequestOptions {
 const DEFAULT_TIMEOUT_GET = 5000;
 const DEFAULT_TIMEOUT_POST = 120000;
 
-/**
- * Lightweight HTTP client using Node.js native modules.
- * Designed for use within the VS Code extension host where
- * third-party HTTP libraries may not be available.
- *
- * Streaming requests use a raw TCP socket to bypass Node's strict
- * HTTP parser (llhttp) which throws HPE_JS_EXCEPTION on Ollama's
- * chunked ndjson responses.
- */
 
 function resolveLib(url: URL) {
   return url.protocol === "https:" ? https : http;
@@ -89,7 +80,6 @@ export function httpRequest(options: HttpRequestOptions): Promise<string> {
  * HTTP parser (llhttp) which can throw HPE_JS_EXCEPTION when parsing
  * Ollama's chunked ndjson streaming responses. By handling HTTP at
  * the socket level, we avoid parser incompatibilities in the VS Code
- * extension host's Electron-bundled Node.js.
  */
 export function httpRequestStream(options: HttpRequestOptions): Promise<AsyncIterable<string>> {
   const { baseUrl, path, body, timeout = DEFAULT_TIMEOUT_POST } = options;

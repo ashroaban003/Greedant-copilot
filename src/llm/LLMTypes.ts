@@ -1,11 +1,3 @@
-/**
- * Core types for LLM provider abstraction.
- *
- * These types define the contract between the chat layer and
- * any LLM backend. New providers only need to implement the
- * LLMProvider interface using these shared types.
- */
-
 /** Role of a message in the conversation */
 export type MessageRole = "system" | "user" | "assistant";
 

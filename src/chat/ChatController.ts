@@ -10,7 +10,6 @@ import { CONFIG_SECTION, CONFIG_OLLAMA_MODEL } from "../constants";
  *
  * It bridges the webview (UI) and the ChatService (business logic),
  * handling user input, streaming responses back to the UI, and
- * managing loading/error states.
  */
 export class ChatController {
   private chatService: ChatService;
@@ -23,13 +22,6 @@ export class ChatController {
     this.config = config;
   }
 
-  /**
-   * Handle an incoming user message.
-   * Streams the response back via the postMessage callback.
-   *
-   * Each session (identified by sessionId) can process independently,
-   * supporting multiple live windows without blocking each other.
-   */
   async handleUserMessage(
     content: string,
     postMessage: (message: ExtensionMessage) => void,
@@ -65,64 +57,46 @@ export class ChatController {
     }
   }
 
-  /**
-   * Fetch available models and determine the active model.
-   * Applies fallback logic: if configured model isn't in the list, use first available.
-   */
   async handleModelListRequest(
     postMessage: (message: ExtensionMessage) => void
   ): Promise<void> {
     const models = await this.getModelList();
     const activeModel = await this.resolveActiveModel(models);
+    
+    if (activeModel) {
+      await this.chatService.fetchAndSetContextWindow(activeModel);
+    }
+    
     postMessage({ type: MSG.MODEL_LIST, models, activeModel });
   }
 
-  /**
-   * Handle model selection from the webview.
-   * Persists the choice to VS Code workspace configuration.
-   * The UI updates optimistically, no response needed.
-   */
   async handleModelSelection(
     model: string,
     _postMessage: (message: ExtensionMessage) => void
   ): Promise<void> {
     await this.updateModelConfig(model);
+    await this.chatService.fetchAndSetContextWindow(model);
   }
 
-  /**
-   * Clear the chat history and notify the webview.
-   */
   clearChat(postMessage: (message: ExtensionMessage) => void): void {
     this.chatService.clearHistory();
     postMessage({ type: MSG.CLEAR_CHAT });
   }
 
-  /**
-   * Check provider availability.
-   */
   async checkProvider(): Promise<{ available: boolean; error?: string }> {
     return this.chatService.checkAvailability();
   }
 
-  /**
-   * Whether any session currently has a request in progress.
-   */
   get busy(): boolean {
     return this.activeRequests.size > 0;
   }
 
-  /**
-   * Whether a specific session has a request in progress.
-   */
   isSessionBusy(sessionId: string): boolean {
     return this.activeRequests.get(sessionId) ?? false;
   }
 
   // ─── Private helpers ───────────────────────────────────────────
 
-  /**
-   * Fetch models from the provider via ChatService.
-   */
   private async getModelList(): Promise<string[]> {
     return this.chatService.listModels();
   }

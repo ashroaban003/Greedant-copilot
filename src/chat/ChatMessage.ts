@@ -1,7 +1,3 @@
-/**
- * Chat message domain types.
- */
-
 /** Message roles in the chat */
 export enum ChatRole {
   User = "user",

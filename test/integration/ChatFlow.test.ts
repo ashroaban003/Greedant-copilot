@@ -13,8 +13,9 @@ import { ChatService } from "../../src/chat/ChatService";
 import { MockProvider } from "../../src/llm/providers/MockProvider";
 import { ExtensionMessage, MSG } from "../../src/chat/MessageProtocol";
 import { ChatConfig } from "../../src/config/ChatConfig";
-import { ContextManager } from "../../src/context/ContextManager";
+import { ContextManager, ContextManagerDeps } from "../../src/context/ContextManager";
 import { SelectionProvider } from "../../src/context/providers/SelectionProvider";
+import { TokenBudget } from "../../src/context/TokenBudget";
 import { LLMRequest } from "../../src/llm/LLMTypes";
 
 function createMockConfig(): ChatConfig {
@@ -30,7 +31,15 @@ function createMockContextManager(context: string | null = null): ContextManager
   const mockSelectionProvider = {
     getContext: jest.fn(() => context),
   } as unknown as SelectionProvider;
-  return new ContextManager(mockSelectionProvider);
+
+  const deps: ContextManagerDeps = {
+    tokenBudget: new TokenBudget(),
+    selectionProvider: mockSelectionProvider,
+    activeFileProvider: { getFileCandidate: jest.fn(() => null) } as any,
+    openFilesProvider: { getFileCandidates: jest.fn(() => []) } as any,
+    grepProvider: { getFileCandidates: jest.fn(async () => []) } as any,
+  };
+  return new ContextManager(deps);
 }
 
 function buildPipeline(contextManager?: ContextManager) {
@@ -57,6 +66,9 @@ async function collectMessages(
 }
 
 describe("Integration: ChatController → ChatService → MockProvider", () => {
+  // Increase timeout for all tests in this suite due to MockProvider delays
+  jest.setTimeout(15000);
+
   it("produces the correct message sequence for a simple message", async () => {
     const { controller } = buildPipeline();
     const messages = await collectMessages(controller, "hello");
@@ -118,7 +130,8 @@ describe("Integration: ChatController → ChatService → MockProvider", () => {
 
     const fullText = chunks.map((c) => c.content).join("");
     expect(fullText.length).toBeGreaterThan(0);
-    expect(fullText.toLowerCase()).toContain("greedant");
+    // MockProvider now returns debug info showing the full prompt
+    expect(fullText).toContain("Debug");
   });
 
   it("streamEnd references the same messageId as the assistant placeholder", async () => {
@@ -261,12 +274,19 @@ describe("Integration: ChatController → ChatService → MockProvider", () => {
       .map((m) => (m as any).content)
       .join("");
 
-    expect(helloChunks).not.toBe(solidChunks);
-    expect(solidChunks).toContain("Single Responsibility");
+    // Both should contain Debug info now
+    expect(helloChunks).toContain("Debug");
+    expect(solidChunks).toContain("Debug");
+    // But the user messages are different
+    expect(helloChunks).toContain("hello");
+    expect(solidChunks).toContain("SOLID");
   });
 });
 
 describe("Integration: Context Flow", () => {
+  // Increase timeout for all tests in this suite due to MockProvider delays
+  jest.setTimeout(15000);
+
   it("includes base system prompt and instructions in LLM request", async () => {
     const contextManager = createMockContextManager(null);
     const provider = new MockProvider();
@@ -392,7 +412,15 @@ File: test.ts (lines 1-3)
     const mockSelectionProvider = {
       getContext: jest.fn(() => null),
     } as unknown as SelectionProvider;
-    const contextManager = new ContextManager(mockSelectionProvider);
+
+    const deps: ContextManagerDeps = {
+      tokenBudget: new TokenBudget(),
+      selectionProvider: mockSelectionProvider,
+      activeFileProvider: { getFileCandidate: jest.fn(() => null) } as any,
+      openFilesProvider: { getFileCandidates: jest.fn(() => []) } as any,
+      grepProvider: { getFileCandidates: jest.fn(async () => []) } as any,
+    };
+    const contextManager = new ContextManager(deps);
 
     const provider = new MockProvider();
     const config = createMockConfig();

@@ -6,8 +6,9 @@ import {
   FinishReason,
 } from "../../src/llm/LLMTypes";
 import { ChatConfig } from "../../src/config/ChatConfig";
-import { ContextManager } from "../../src/context/ContextManager";
+import { ContextManager, ContextManagerDeps } from "../../src/context/ContextManager";
 import { SelectionProvider } from "../../src/context/providers/SelectionProvider";
+import { TokenBudget } from "../../src/context/TokenBudget";
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -46,7 +47,15 @@ function createMockContextManager(context: string | null = null): ContextManager
   const mockSelectionProvider = {
     getContext: jest.fn(() => context),
   } as unknown as SelectionProvider;
-  return new ContextManager(mockSelectionProvider);
+
+  const deps: ContextManagerDeps = {
+    tokenBudget: new TokenBudget(),
+    selectionProvider: mockSelectionProvider,
+    activeFileProvider: { getFileCandidate: jest.fn(() => null) } as any,
+    openFilesProvider: { getFileCandidates: jest.fn(() => []) } as any,
+    grepProvider: { getFileCandidates: jest.fn(async () => []) } as any,
+  };
+  return new ContextManager(deps);
 }
 
 // ─── Tests ───────────────────────────────────────────────────────
