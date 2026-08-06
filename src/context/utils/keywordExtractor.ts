@@ -8,17 +8,21 @@ const STOP_WORDS = new Set([
   "have", "has", "had","doing","dont", "does", "did", "will", "would", "could",
   "should", "may", "might", "shall", "can", "need", "dare", "ought",
   "into", "through", "during", "before", "after", "above", "below",
-  "between", "out", "off", "over", "under", "again", "further", "then",
+  "between", "out","dint", "off", "over", "under", "again", "further", "then",
   "once", "here", "there", "when", "where", "why", "how", "all", "each",
   "every", "both", "few", "more", "most", "other", "some", "such", 
   "not", "only", "own", "same",  "than", "too", "very", "just",
-  "because", "but", "and", "while", "about","down",
+  "because", "but", "and", "while", "about","down","tried",
   "that", "this", "these", "those", "what", "which", "who", "whom",
   "it", "its", "our", "you", "your",  "essentially", "generally",
   "him", "his", "she", "her", "they", "them", "their","understand ",
   "probably", "maybe", "perhaps", "sure", "certainly", "definitely",
   "actually", "literally", "obviously","technicaly", "technically",
   "necessary","weird", "strange", "odd", "funny", "interesting", "curious", "peculiar",
+  "short", "long", "big", "small", "large", "tiny", "huge", "massive",
+  "breif", "quick", "slow", "fast", "rapid", "sudden", "gradual",
+  "concise", "clear", "vague", "ambiguous", "obscure", "complex", "simple",
+
   
   //Emotional words
   "shit", "fuck", "damn", "hell", "crap", "sucks", "suck", "stupid", "dumb",
@@ -34,12 +38,13 @@ const STOP_WORDS = new Set([
   "please", "help", "want", "make", "create", "add", "fix", "change",
   "update", "modify", "write", "show", "explain", "tell", "give",
   "code", "file", "line", "error", "bug", "issue", "problem",
-  "work", "works", "working", "use", "using", "used",
+  "work", "work?","works?","works", "working", "use", "using", "used",
   "think", "check", "see", "look", "find", "need", "know",
   "call", "called", "calling", "run", "running", "test", "testing",
   "like", "something", "thing", "stuff", "way", "ways",
   "also", "actually", "basically", "currently", "really",
   "example", "sample", "demo", "implement", "implementation",
+  "exactly", "still"
 ]);
 
 const MIN_WORD_LENGTH = 3;
