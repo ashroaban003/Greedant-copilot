@@ -4,7 +4,7 @@
  * Extracts function signatures, class declarations, imports, and exports
  * from source code WITHOUT a full AST parser. Zero dependencies.
  *
- * Supports: TypeScript, JavaScript, Python, Go, Rust, Java
+ * Supports: TypeScript, JavaScript, Python, Go, Java, Kotlin
  * Accuracy: ~90% for well-formatted code. Good enough for context hints.
  */
 
@@ -60,6 +60,17 @@ const GO_PATTERNS = {
   interface: /^type\s+(\w+)\s+interface/,
 };
 
+const JAVA_KOTLIN_PATTERNS = {
+  import: /^import\s+/,
+  package: /^package\s+/,
+  class: /^(?:public\s+|private\s+|protected\s+)?(?:abstract\s+|final\s+)?(?:data\s+)?class\s+(\w+)/,
+  interface: /^(?:public\s+|private\s+|protected\s+)?interface\s+(\w+)/,
+  enum: /^(?:public\s+|private\s+|protected\s+)?enum\s+(?:class\s+)?(\w+)/,
+  object: /^(?:companion\s+)?object\s+(\w+)?/,  // Kotlin object/companion
+  function: /^(?:public\s+|private\s+|protected\s+)?(?:static\s+)?(?:final\s+)?(?:suspend\s+)?(?:fun\s+|void\s+|[\w<>\[\],\s]+\s+)(\w+)\s*\(/,
+  annotation: /^@(\w+)/,
+};
+
 /**
  * Extract the structure of a source file.
  */
@@ -81,6 +92,10 @@ export function extractFileStructure(
       break;
     case "go":
       symbols = extractGo(lines);
+      break;
+    case "java":
+    case "kotlin":
+      symbols = extractJavaKotlin(lines);
       break;
     default:
       // Generic fallback: just grab imports and obvious function/class patterns
@@ -445,6 +460,137 @@ function extractGo(lines: string[]): CodeSymbol[] {
 
 // ─── Helpers ────────────────────────────────────────────────────
 
+function extractJavaKotlin(lines: string[]): CodeSymbol[] {
+  const symbols: CodeSymbol[] = [];
+  let inMultiLineComment = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trimStart();
+
+    if (!trimmed) { continue; }
+
+    const firstChar = trimmed.charCodeAt(0);
+
+    // Track multi-line comments: '/' = 47, '*' = 42
+    if (firstChar === 47 && trimmed.charCodeAt(1) === 42) {
+      inMultiLineComment = true;
+    }
+    if (inMultiLineComment) {
+      if (trimmed.includes("*/")) { inMultiLineComment = false; }
+      continue;
+    }
+
+    // Skip single-line comments: '//'
+    if (firstChar === 47 && trimmed.charCodeAt(1) === 47) { continue; }
+
+    // Skip annotations but don't extract (noise for context)
+    // '@' = 64
+    if (firstChar === 64) { continue; }
+
+    // 'i' = 105 (import, interface)
+    // 'p' = 112 (package, public, private, protected)
+    // 'c' = 99 (class, companion)
+    // 'a' = 97 (abstract)
+    // 'f' = 102 (final, fun)
+    // 'd' = 100 (data)
+    // 'e' = 101 (enum)
+    // 'o' = 111 (object)
+    // 's' = 115 (static, suspend)
+
+    // Import: 'i'
+    if (firstChar === 105 && trimmed.startsWith("import")) {
+      symbols.push({
+        type: "import",
+        name: extractJavaImportName(trimmed),
+        signature: trimLine(trimmed),
+        line: i,
+      });
+      continue;
+    }
+
+    // Package: 'p' - skip but acknowledge
+    if (firstChar === 112 && trimmed.startsWith("package")) {
+      continue;
+    }
+
+    // Class: multiple prefixes possible
+    if (trimmed.includes("class ")) {
+      const classMatch = trimmed.match(JAVA_KOTLIN_PATTERNS.class);
+      if (classMatch) {
+        symbols.push({ type: "class", name: classMatch[1], signature: trimLine(trimmed), line: i });
+        continue;
+      }
+    }
+
+    // Interface
+    if (trimmed.includes("interface ")) {
+      const ifaceMatch = trimmed.match(JAVA_KOTLIN_PATTERNS.interface);
+      if (ifaceMatch) {
+        symbols.push({ type: "interface", name: ifaceMatch[1], signature: trimLine(trimmed), line: i });
+        continue;
+      }
+    }
+
+    // Enum
+    if (trimmed.includes("enum ")) {
+      const enumMatch = trimmed.match(JAVA_KOTLIN_PATTERNS.enum);
+      if (enumMatch) {
+        symbols.push({ type: "class", name: enumMatch[1], signature: trimLine(trimmed), line: i });
+        continue;
+      }
+    }
+
+    // Kotlin object
+    if (firstChar === 111 || (firstChar === 99 && trimmed.startsWith("companion"))) {
+      const objMatch = trimmed.match(JAVA_KOTLIN_PATTERNS.object);
+      if (objMatch) {
+        symbols.push({ type: "class", name: objMatch[1] || "companion", signature: trimLine(trimmed), line: i });
+        continue;
+      }
+    }
+
+    // Function/method: 'fun' (Kotlin) or return type + name (Java)
+    // Check for 'fun ' (Kotlin) or common method patterns
+    if (trimmed.includes("fun ") || trimmed.includes("(")) {
+      // Skip if it's a variable declaration or call
+      if (!trimmed.includes("=") && !trimmed.startsWith("return") && !trimmed.startsWith("if") && !trimmed.startsWith("for") && !trimmed.startsWith("while")) {
+        const funcMatch = trimmed.match(JAVA_KOTLIN_PATTERNS.function);
+        if (funcMatch && !isJavaKeyword(funcMatch[1])) {
+          symbols.push({ type: "function", name: funcMatch[1], signature: trimLine(trimmed), line: i });
+          continue;
+        }
+      }
+    }
+  }
+
+  return symbols;
+}
+
+function extractJavaImportName(line: string): string {
+  // "import com.example.Foo;" → "Foo"
+  // "import static com.example.Foo.bar;" → "Foo"
+  const match = line.match(/import\s+(?:static\s+)?([a-zA-Z0-9_.]+)/);
+  if (match) {
+    const parts = match[1].split(".");
+    return parts[parts.length - 1] || match[1];
+  }
+  return "";
+}
+
+const JAVA_KEYWORDS = new Set([
+  "if", "else", "for", "while", "switch", "case", "return", "try",
+  "catch", "finally", "new", "throw", "this", "super", "true", "false",
+  "null", "void", "class", "interface", "extends", "implements",
+  "package", "import", "public", "private", "protected", "static",
+  "final", "abstract", "synchronized", "volatile", "transient",
+  "when", "is", "as", "in", "out", "where", // Kotlin
+]);
+
+function isJavaKeyword(name: string): boolean {
+  return JAVA_KEYWORDS.has(name);
+}
+
 function buildSkeleton(symbols: CodeSymbol[], _language: string): string {
   if (symbols.length === 0) {
     return "";
@@ -558,6 +704,9 @@ function normalizeLanguage(langId: string): string {
     python: "python",
     go: "go",
     rust: "go", // similar enough patterns
+    java: "java",
+    kotlin: "kotlin",
+    kt: "kotlin",
   };
   return map[langId] || "typescript"; // default to TS/JS patterns
 }
