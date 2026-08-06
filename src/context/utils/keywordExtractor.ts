@@ -4,19 +4,26 @@
 
 const STOP_WORDS = new Set([
   // English
-  "a", "an", "the", "is", "are", "was", "were", "be", "been", "being",
-  "have", "has", "had", "do", "does", "did", "will", "would", "could",
+  "the", "are", "was", "were",  "been", "being", "for",  "with",  "from", 
+  "have", "has", "had","doing","dont", "does", "did", "will", "would", "could",
   "should", "may", "might", "shall", "can", "need", "dare", "ought",
-  "to", "of", "in", "for", "on", "with", "at", "by", "from", "as",
   "into", "through", "during", "before", "after", "above", "below",
   "between", "out", "off", "over", "under", "again", "further", "then",
   "once", "here", "there", "when", "where", "why", "how", "all", "each",
-  "every", "both", "few", "more", "most", "other", "some", "such", "no",
-  "not", "only", "own", "same", "so", "than", "too", "very", "just",
-  "because", "but", "and", "or", "if", "while", "about", "up", "down",
+  "every", "both", "few", "more", "most", "other", "some", "such", 
+  "not", "only", "own", "same",  "than", "too", "very", "just",
+  "because", "but", "and", "while", "about","down",
   "that", "this", "these", "those", "what", "which", "who", "whom",
-  "it", "its", "i", "me", "my", "we", "our", "you", "your", "he",
-  "him", "his", "she", "her", "they", "them", "their",
+  "it", "its", "our", "you", "your",  "essentially", "generally",
+  "him", "his", "she", "her", "they", "them", "their","understand ",
+  "probably", "maybe", "perhaps", "sure", "certainly", "definitely",
+  "actually", "literally", "obviously","technicaly", "technically",
+  "necessary","weird", "strange", "odd", "funny", "interesting", "curious", "peculiar",
+  
+  //Emotional words
+  "shit", "fuck", "damn", "hell", "crap", "sucks", "suck", "stupid", "dumb",
+  "idiot", "moron", "asshole", "bastard", "bitch", "jerk", "loser",
+
   // Code-related noise
   "function", "class", "const", "let", "var", "return", "import",
   "export", "default", "new", "void", "null", "undefined", "true",
