@@ -98,19 +98,63 @@ export class ChatService {
     this.provider = provider;
   }
 
+  /**
+   * Get the last user+assistant message pair from history.
+   * Truncates the assistant response to avoid bloating context.
+   */
+  private getLastConversationPair(): { user: string; assistant: string } | null {
+    const history = this.conversationHistory;
+    if (history.length < 2) {
+      return null;
+    }
+
+    // Find the last assistant message and the user message before it
+    for (let i = history.length - 1; i >= 1; i--) {
+      if (history[i].role === "assistant" && history[i - 1].role === "user") {
+        const assistantContent = history[i].content;
+        const maxLength = 1690;
+        const truncatedAssistant = assistantContent.length > maxLength
+          ? assistantContent.slice(0, maxLength) + "..."
+          : assistantContent;
+
+        return {
+          user: history[i - 1].content,
+          assistant: truncatedAssistant,
+        };
+      }
+    }
+
+    return null;
+  }
+
   private async buildMessages(userMessage: string): Promise<LLMMessage[]> {
     let systemPrompt: string;
+    const lastPair = this.getLastConversationPair();
 
     try {
       systemPrompt = await this.contextManager.buildPromptWithContext(
         this.config.systemPrompt,
-        userMessage
+        userMessage,
+        lastPair?.assistant ?? null,
+        lastPair?.user ?? null
       );
     } catch {
       // Context gathering failed — fall back to basic prompt
       systemPrompt = this.contextManager.buildPromptWithDefaultContext(
         this.config.systemPrompt
       );
+    }
+
+    // Prepend previous conversation context to system prompt if available
+    if (lastPair) {
+      const conversationContext = `## Previous Conversation (for continuity)
+User: ${lastPair.user}
+Assistant: ${lastPair.assistant}
+
+---
+
+`;
+      systemPrompt = conversationContext + systemPrompt;
     }
 
     return [

@@ -70,7 +70,8 @@ export class SmartKeywordExtractor {
     userMessage: string,
     activeFileContent: string | null,
     languageId: string,
-    selectionText: string | null = null
+    selectionText: string | null = null,
+    previousAssistantResponse: string | null = null
   ): Promise<SmartKeywordResult> {
     const initialKeywords = extractKeywords(userMessage, false);
 
@@ -79,7 +80,7 @@ export class SmartKeywordExtractor {
     }
 
     const relevantContent = findRelevantContent(activeFileContent, languageId, initialKeywords);
-    const userPrompt = this.buildUserPrompt(userMessage, initialKeywords, relevantContent, selectionText);
+    const userPrompt = this.buildUserPrompt(userMessage, initialKeywords, relevantContent, selectionText, previousAssistantResponse);
     console.log(userPrompt)
     
     const result = await this.callLLMWithRetry(userPrompt);
@@ -171,10 +172,15 @@ export class SmartKeywordExtractor {
     userMessage: string,
     initialKeywords: string[],
     relevantContent: string | null,
-    selectionText: string | null = null
+    selectionText: string | null = null,
+    previousAssistantResponse: string | null = null
   ): string {
     let prompt = `USER QUERY: ${userMessage}\n\n`;
     prompt += `INITIAL BASIC KEYWORDS : ${initialKeywords.join(", ")}\n\n`;
+
+    if (previousAssistantResponse) {
+      prompt += `PREVIOUS ASSISTANT RESPONSE (for context):\n${previousAssistantResponse}\n\n`;
+    }
 
     if (selectionText) {
       prompt += `SELECTED CODE (This maybe related):\n\`\`\`\n${selectionText}\n\`\`\`\n\n`;

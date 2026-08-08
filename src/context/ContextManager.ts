@@ -84,21 +84,33 @@ export class ContextManager {
 
   async buildPromptWithContext(
     baseSystemPrompt: string,
-    userMessage: string
+    userMessage: string,
+    previousAssistantResponse: string | null = null,
+    previousUserMessage: string | null = null
   ): Promise<string> {
     // Estimate fixed costs
     const systemTokens = this.tokenBudget.estimateTokens(baseSystemPrompt)
       + this.tokenBudget.estimateTokens(CODE_ASSISTANT_INSTRUCTIONS);
     const userTokens = this.tokenBudget.estimateTokens(userMessage);
 
+    // Estimate previous conversation pair tokens
+    let historyTokens = 0;
+    if (previousUserMessage) {
+      historyTokens += this.tokenBudget.estimateTokens(previousUserMessage);
+    }
+    if (previousAssistantResponse) {
+      historyTokens += this.tokenBudget.estimateTokens(previousAssistantResponse);
+    }
+
     // Calculate available budget for context (returns 0 if insufficient)
+    // Include history tokens in the fixed cost calculation
     const availableBudget = this.tokenBudget.calculateAvailableBudget(
-      systemTokens,
+      systemTokens + historyTokens,
       userTokens
     );
 
     // Gather context using new architecture
-    const builtContext = await this.gatherAndAssembleContext(userMessage, availableBudget);
+    const builtContext = await this.gatherAndAssembleContext(userMessage, availableBudget, previousAssistantResponse);
 
     // Assemble final prompt
     let prompt = `${baseSystemPrompt}\n\n${CODE_ASSISTANT_INSTRUCTIONS}`;
@@ -124,7 +136,8 @@ export class ContextManager {
 
   private async gatherAndAssembleContext(
     userMessage: string,
-    availableBudget: number
+    availableBudget: number,
+    previousAssistantResponse: string | null = null
   ): Promise<BuiltContext> {
     if (availableBudget === 0) {
       return {
@@ -143,7 +156,8 @@ export class ContextManager {
       userMessage,
       activeSnapshot.content,
       activeSnapshot.languageId,
-      activeSnapshot.selectionText
+      activeSnapshot.selectionText,
+      previousAssistantResponse
     );
 
     const fileCandidates: FileCandidate[] = [];
@@ -652,7 +666,8 @@ export class ContextManager {
     userMessage: string,
     activeFileContent: string | null,
     languageId: string | null,
-    selectionText: string | null = null
+    selectionText: string | null = null,
+    previousAssistantResponse: string | null = null
   ): Promise<SmartKeywordResult> {
     // Try smart extraction if available
     if (this.smartKeywordExtractor) {
@@ -661,7 +676,8 @@ export class ContextManager {
           userMessage,
           activeFileContent,
           languageId || "typescript",
-          selectionText
+          selectionText,
+          previousAssistantResponse
         );
       } catch {
         // Fall through to basic extraction
