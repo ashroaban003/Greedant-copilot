@@ -20,26 +20,26 @@ const STOP_WORDS = new Set([
   "actually", "literally", "obviously","technicaly", "technically",
   "necessary","weird", "strange", "odd", "funny", "interesting", "curious", "peculiar",
   "short", "long", "big", "small", "large", "tiny", "huge", "massive",
-  "breif", "quick", "slow", "fast", "rapid", "sudden", "gradual",
+  "breif", "quick", "slow", "fast", "rapid", "sudden", "gradual","isnt", "wasnt", "werent", "arent", "havent", "hasnt", "hadnt",
   "concise", "clear", "vague", "ambiguous", "obscure", "complex", "simple",
 
   
   //Emotional words
   "shit", "fuck", "damn", "hell", "crap", "sucks", "suck", "stupid", "dumb",
-  "idiot", "moron", "asshole", "bastard", "bitch", "jerk", "loser",
+  "idiot", "moron", "asshole", "bastard", "bitch", "jerk", "loser","wtf","bullshit",
 
   // Code-related noise
   "function", "class", "const", "let", "var", "return", "import",
   "export", "default", "new", "void", "null", "undefined", "true",
   "false", "type", "interface", "enum", "async", "await", "try",
   "catch", "throw", "extends", "implements", "public", "private",
-  "protected", "static", "readonly", "get", "set",
+  "protected", "static", "readonly", "get","getting", "set","setting", "constructor", "super", "this", "self", "prototype",
   // Common request words
-  "please", "help", "want", "make", "create", "add", "fix", "change",
-  "update", "modify", "write", "show", "explain", "tell", "give",
-  "code", "file", "line", "error", "bug", "issue", "problem",
+  "please", "help", "want", "make", "create", "add", "fix", "change","changing",
+  "update", "modify", "write", "show", "explain", "tell", "give","delete",
+  "code", "file", "line", "error", "bug", "issue", "problem","remove",
   "work", "work?","works?","works", "working", "use", "using", "used",
-  "think", "check", "see", "look", "find", "need", "know",
+  "think", "check", "see", "look", "find", "need", "know","modifying",
   "call", "called", "calling", "run", "running", "test", "testing",
   "like", "something", "thing", "stuff", "way", "ways",
   "also", "actually", "basically", "currently", "really",
