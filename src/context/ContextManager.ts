@@ -16,6 +16,7 @@ import {
   MergedFileCandidate,
   FunctionContext,
   FileSkeleton,
+  FILE_SCORING,
 } from "./types";
 import { SmartKeywordExtractor } from "../agent/SmartKeywordExtractor";
 import {
@@ -27,7 +28,8 @@ import {
   getActiveEditorSnapshot,
   getFileInfo,
 } from "./utils/fileDiscoveryUtils";
-import { extractKeywords as basicExtractKeywords } from "./utils/keywordExtractor";
+import { extractKeywordsStructured } from "./utils/keywordExtractor";
+import { scoreFilenameAgainstKeywords } from "./utils/keywordMatcher";
 
 const CODE_ASSISTANT_INSTRUCTIONS = `## Instructions
 - No overtalk or unnecessary or line-by-line explanations.
@@ -160,13 +162,20 @@ export class ContextManager {
       previousAssistantResponse
     );
 
+    // Debug: Log extracted keywords
+    console.log("[ContextManager] Keywords for scoring:", { tier1: keywords.tier1.map(k => k.keyword),tier2: keywords.tier2.map(k => `${k.keyword}(${k.score})`) });
+
     const fileCandidates: FileCandidate[] = [];
 
     // 1a. Active file (always included) - use snapshot instead of provider
     if (activeSnapshot.filePath && activeSnapshot.content?.trim()) {
+      // Base score + keyword-based filename scoring (bypass test filter for active file)
+      const fileName = activeSnapshot.filePath.split(/[\\/]/).pop() || "";
+      const keywordBonus = scoreFilenameAgainstKeywords(fileName, keywords, true);
+      
       fileCandidates.push({
         filePath: activeSnapshot.filePath,
-        score: 69, // FILE_SCORING.ACTIVE_FILE
+        score: FILE_SCORING.ACTIVE_FILE + keywordBonus,
         source: "active",
       });
     }
@@ -194,6 +203,9 @@ export class ContextManager {
 
     // PHASE 2: Merge and dedupe file candidates
     const mergedCandidates = this.mergeFileCandidates(fileCandidates);
+
+    // Debug: Log file candidates with scores
+    console.log("[ContextManager] File candidates:", mergedCandidates.map(c => ({file: c.filePath.split(/[\\/]/).pop(),score: c.score,sources: c.sources })));
 
     // PHASE 3: Extract functions from each file
     // Cache file contents to avoid re-reading
@@ -685,11 +697,11 @@ export class ContextManager {
     }
 
     // Fallback: basic keyword extraction (no LLM)
-    const basicKeywords = basicExtractKeywords(userMessage);
+    const { primary, derived } = extractKeywordsStructured(userMessage);
 
     return {
-      tier1: basicKeywords.slice(0, 7).map(kw => ({ keyword: kw, score: 100 as const })),
-      tier2: basicKeywords.slice(7).map((kw, i) => ({ keyword: kw, score: Math.max(50, 80 - i * 10) })),
+      tier1: primary.map(kw => ({ keyword: kw, score: 100 as const })),
+      tier2: derived.map((kw, i) => ({ keyword: kw, score: Math.max(50, 80 - i * 10) })),
     };
   }
 }
