@@ -4,7 +4,7 @@
 
 import { LLMProvider } from "../llm/LLMProvider";
 import { LLMMessage } from "../llm/LLMTypes";
-import { extractKeywords } from "../context/utils/keywordExtractor";
+import { extractKeywordsStructured } from "../context/utils/keywordExtractor";
 import { findRelevantContent } from "../context/utils/functionExtractor";
 import { SmartKeywordResult, Tier1Keyword, Tier2Keyword } from "../context/types";
 export { SmartKeywordResult, Tier1Keyword, Tier2Keyword };
@@ -73,7 +73,7 @@ export class SmartKeywordExtractor {
     selectionText: string | null = null,
     previousAssistantResponse: string | null = null
   ): Promise<SmartKeywordResult> {
-    const initialKeywords = extractKeywords(userMessage, false);
+    const { primary: initialKeywords } = extractKeywordsStructured(userMessage);
 
     if (initialKeywords.length === 0 && !selectionText) {
       return this.fallbackExtraction(userMessage);
@@ -81,14 +81,14 @@ export class SmartKeywordExtractor {
 
     const relevantContent = findRelevantContent(activeFileContent, languageId, initialKeywords);
     const userPrompt = this.buildUserPrompt(userMessage, initialKeywords, relevantContent, selectionText, previousAssistantResponse);
-    console.log(userPrompt)
+    // console.log(userPrompt)
     
     const result = await this.callLLMWithRetry(userPrompt);
 
     if (result) {
       const processed = this.processLLMResponse(result);
       if (processed.tier1.length > 0) {
-        console.log(processed.tier1)
+        // console.log(processed.tier1)
         return processed;
       }
     }
@@ -215,18 +215,14 @@ export class SmartKeywordExtractor {
   }
 
   private fallbackExtraction(userMessage: string): SmartKeywordResult {
-    const basicKeywords = extractKeywords(userMessage);
+    const { primary, derived } = extractKeywordsStructured(userMessage);
 
-    const tier1: Tier1Keyword[] = basicKeywords
-      .slice(0, MAX_TIER1_KEYWORDS)
-      .map((keyword) => ({ keyword, score: 100 as const }));
+    const tier1: Tier1Keyword[] = primary.map((keyword) => ({ keyword, score: 100 as const }));
 
-    const tier2: Tier2Keyword[] = basicKeywords
-      .slice(MAX_TIER1_KEYWORDS)
-      .map((keyword, index) => ({
-        keyword,
-        score: Math.max(50, 80 - index * 10),
-      }));
+    const tier2: Tier2Keyword[] = derived.map((keyword, index) => ({
+      keyword,
+      score: Math.max(50, 80 - index * 10),
+    }));
 
     return { tier1, tier2 };
   }

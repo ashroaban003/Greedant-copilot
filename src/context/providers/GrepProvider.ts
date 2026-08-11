@@ -12,7 +12,7 @@ import { getFileName } from "../utils/textUtils";
 import {
   EXCLUDE_GLOB_PATTERNS,
 } from "../utils/codeBlockUtils";
-import { scoreFilenameAgainstKeywords } from "../utils/keywordMatcher";
+import { scoreFilenameAgainstKeywords, shouldSkipTestFile } from "../utils/keywordMatcher";
 import {
   isActiveFile,
   createOpenFileChecker,
@@ -138,6 +138,11 @@ export class GrepProvider {
 
       const fileName = getFileName(filePath);
 
+      // Early exit: skip test files with no exact keyword match
+      if (shouldSkipTestFile(fileName, keywords)) {
+        continue;
+      }
+
       // Calculate score
       let score = FILE_SCORING.OTHER_FILES;
       if (isTier1) {
@@ -200,6 +205,13 @@ export class GrepProvider {
         continue;
       }
 
+      const fileName = getFileName(filePath);
+
+      // Early exit: skip test files with no exact keyword match (before reading content)
+      if (shouldSkipTestFile(fileName, keywords)) {
+        continue;
+      }
+
       try {
         const doc = await vscode.workspace.openTextDocument(fileUri);
         const content = doc.getText();
@@ -216,8 +228,6 @@ export class GrepProvider {
         }
 
         if (matchingLines.length > 0) {
-          const fileName = getFileName(filePath);
-
           // Calculate score
           let score = FILE_SCORING.OTHER_FILES;
           if (isTier1) {

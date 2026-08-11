@@ -48,17 +48,26 @@ const STOP_WORDS = new Set([
 ]);
 
 const MIN_WORD_LENGTH = 3;
-const MAX_KEYWORDS = 8;
+const MAX_PRIMARY = 5;
+const MAX_DERIVED = 8;
 
-export function extractKeywords(message: string, includePartialKeywords: boolean = true): string[] {
+export interface ExtractedKeywords {
+  primary: string[];
+  derived: string[];
+}
+
+/**
+ * Extract keywords separating primary identifiers from derived (camelCase/snake_case) parts.
+ */
+export function extractKeywordsStructured(message: string): ExtractedKeywords {
   if (!message || message.trim().length === 0) {
-    return [];
+    return { primary: [], derived: [] };
   }
 
   const fullIdentifiers: string[] = [];
   const partialWords = new Set<string>();
 
-  // Extract quoted strings (user likely means these literally) — highest priority
+  // Quoted strings — highest priority
   const quotedMatches = message.match(/["'`]([^"'`]+)["'`]/g);
   if (quotedMatches) {
     for (const quoted of quotedMatches) {
@@ -68,74 +77,70 @@ export function extractKeywords(message: string, includePartialKeywords: boolean
       }
     }
   }
+
+  // Hyphenated terms
   const hyphenatedMatches = message.match(/[a-zA-Z][a-zA-Z0-9]*(?:-[a-zA-Z0-9]+)+/g) || [];
   for (const term of hyphenatedMatches) {
     if (term.length >= MIN_WORD_LENGTH && !STOP_WORDS.has(term.toLowerCase())) {
       fullIdentifiers.push(term);
     }
   }
-  const identifiers = message.match(/[a-zA-Z_$][a-zA-Z0-9_$]*/g) || [];
 
+  // Identifiers
+  const identifiers = message.match(/[a-zA-Z_$][a-zA-Z0-9_$]*/g) || [];
   for (const id of identifiers) {
-    if (hyphenatedMatches.some(h => h.includes(id))) {
-      continue;
-    }
+    if (hyphenatedMatches.some(h => h.includes(id))) { continue; }
+    
     if (id.length >= MIN_WORD_LENGTH && !STOP_WORDS.has(id.toLowerCase())) {
       fullIdentifiers.push(id);
     }
 
-    if (includePartialKeywords) {
-      // Split camelCase: "getUserName" → ["get", "User", "Name"]
-      const camelParts = splitCamelCase(id);
-      if (camelParts.length > 1) {
-        for (const part of camelParts) {
-          if (part.length >= MIN_WORD_LENGTH && !STOP_WORDS.has(part.toLowerCase())) {
-            partialWords.add(part);
-          }
+    // camelCase splits
+    const camelParts = id.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/([A-Z])([A-Z][a-z])/g, "$1 $2").split(/\s+/);
+    if (camelParts.length > 1) {
+      for (const part of camelParts) {
+        if (part.length >= MIN_WORD_LENGTH && !STOP_WORDS.has(part.toLowerCase())) {
+          partialWords.add(part);
         }
       }
+    }
 
-      // Split snake_case: "get_user_name" → ["get", "user", "name"]
-      const snakeParts = id.split("_");
-      if (snakeParts.length > 1) {
-        for (const part of snakeParts) {
-          if (part.length >= MIN_WORD_LENGTH && !STOP_WORDS.has(part.toLowerCase())) {
-            partialWords.add(part);
-          }
+    // snake_case splits
+    const snakeParts = id.split("_");
+    if (snakeParts.length > 1) {
+      for (const part of snakeParts) {
+        if (part.length >= MIN_WORD_LENGTH && !STOP_WORDS.has(part.toLowerCase())) {
+          partialWords.add(part);
         }
       }
     }
   }
+
+  // Dedupe primary
   const seen = new Set<string>();
-  const uniqueIdentifiers: string[] = [];
+  const uniquePrimary: string[] = [];
   for (const id of fullIdentifiers) {
     const lower = id.toLowerCase();
     if (!seen.has(lower)) {
       seen.add(lower);
-      uniqueIdentifiers.push(id);
+      uniquePrimary.push(id);
     }
   }
 
-  uniqueIdentifiers.sort((a, b) => b.length - a.length);
-  if (includePartialKeywords) {
-    const partials = [...partialWords].filter(p => !seen.has(p.toLowerCase()));
-    partials.sort((a, b) => b.length - a.length);
-    return [...uniqueIdentifiers, ...partials].slice(0, MAX_KEYWORDS);
-  }
+  // Derived: exclude those already in primary
+  const uniqueDerived = [...partialWords]
+    .filter(p => !seen.has(p.toLowerCase()))
+    .sort((a, b) => b.length - a.length);
 
-  return uniqueIdentifiers.slice(0, MAX_KEYWORDS);
+  uniquePrimary.sort((a, b) => b.length - a.length);
+
+  return {
+    primary: uniquePrimary.slice(0, MAX_PRIMARY),
+    derived: uniqueDerived.slice(0, MAX_DERIVED),
+  };
 }
 
 export function extractPrimaryTerm(message: string): string | null {
-  const keywords = extractKeywords(message);
-  if (keywords.length === 0) { return null; }
-  return keywords[0];
-}
-
-function splitCamelCase(str: string): string[] {
-  return str
-    .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2")
-    .split(/\s+/)
-    .filter((s) => s.length > 0);
+  const { primary } = extractKeywordsStructured(message);
+  return primary.length > 0 ? primary[0] : null;
 }

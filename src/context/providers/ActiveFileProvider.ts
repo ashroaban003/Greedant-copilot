@@ -4,21 +4,20 @@
 
 import {
   FileCandidate,
+  SmartKeywordResult,
   FILE_SCORING,
 } from "../types";
 import {
   getActiveFilePath,
   getActiveFileContent,
 } from "../utils/fileDiscoveryUtils";
+import { getFileName } from "../utils/textUtils";
+import { scoreFilenameAgainstKeywords } from "../utils/keywordMatcher";
 
 export class ActiveFileProvider {
   constructor() {}
 
-  /**
-   * Get file candidate for the active editor file.
-   * Returns null if no editor is open or the file is empty.
-   */
-  getFileCandidate(): FileCandidate | null {
+  getFileCandidate(keywords?: SmartKeywordResult): FileCandidate | null {
     const filePath = getActiveFilePath();
     if (!filePath) {
       return null;
@@ -30,9 +29,18 @@ export class ActiveFileProvider {
       return null;
     }
 
+
+    let score = FILE_SCORING.ACTIVE_FILE;
+
+
+    if (keywords) {
+      const fileName = getFileName(filePath);
+      score += scoreFilenameAgainstKeywords(fileName, keywords);
+    }
+
     return {
       filePath,
-      score: FILE_SCORING.ACTIVE_FILE,
+      score,
       source: "active",
     };
   }
