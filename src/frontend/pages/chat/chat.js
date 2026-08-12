@@ -23,6 +23,9 @@
     welcomeScreen: document.getElementById("welcomeScreen"),
     extensionName: extensionName,
     scrollDownBtn: scrollDownBtn,
+    onRunCommand: function (command) {
+      vscode.postMessage({ type: "runCommand", command: command });
+    },
   });
 
   // Wire up scroll down button
@@ -100,6 +103,10 @@
 
       case "modelList":
         ModelSelectorComponent.update(msg.models, msg.activeModel);
+        break;
+
+      case "commandExecuted":
+        // Optional: show feedback when command is sent to terminal
         break;
     }
   });

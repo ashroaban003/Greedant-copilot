@@ -42,6 +42,12 @@ const MessageComponent = (function () {
 
   // ─── Markdown Formatting ──────────────────────────────────────
 
+  /** Languages that should show a "Run" button */
+  const RUNNABLE_LANGUAGES = ["bash", "sh", "shell", "zsh", "powershell", "cmd", "terminal"];
+
+  /** Callback for running commands - set via init */
+  let _onRunCommand = null;
+
   function escapeHtml(text) {
     const div = document.createElement("div");
     div.textContent = text;
@@ -54,7 +60,27 @@ const MessageComponent = (function () {
 
     // Fenced code blocks: ```lang\n...\n```
     html = html.replace(/```(\w*)\n([\s\S]*?)```/g, function (_, lang, code) {
-      return "<pre><code>" + code.trim() + "</code></pre>";
+      const langLower = (lang || "").toLowerCase();
+      const isRunnable = RUNNABLE_LANGUAGES.includes(langLower);
+      const trimmedCode = code.trim();
+      
+      if (isRunnable && trimmedCode) {
+        const escapedCode = trimmedCode.replace(/"/g, "&quot;");
+        return (
+          '<div class="code-block-wrapper">' +
+            '<div class="code-block-header">' +
+              '<span class="code-lang">' + (lang || "terminal") + '</span>' +
+              '<button class="run-btn" data-command="' + escapedCode + '" title="Run in terminal">' +
+                Icons.get("play") +
+                '<span>Run</span>' +
+              '</button>' +
+            '</div>' +
+            '<pre><code>' + trimmedCode + '</code></pre>' +
+          '</div>'
+        );
+      }
+      
+      return "<pre><code>" + trimmedCode + "</code></pre>";
     });
 
     // Inline code
@@ -121,22 +147,26 @@ const MessageComponent = (function () {
   // ─── Public API ───────────────────────────────────────────────
 
   return {
-    /**
-     * Initialize with a container and optional welcome screen.
-     * @param {Object} options
-     * @param {HTMLElement} options.container - Messages container element
-     * @param {HTMLElement|null} options.welcomeScreen - Welcome element (hidden on first message)
-     * @param {string} options.extensionName - Name shown on assistant messages
-     * @param {HTMLElement|null} options.scrollDownBtn - Scroll down button element
-     */
     init: function (options) {
       _container = options.container;
       _welcomeScreen = options.welcomeScreen || null;
       _extensionName = options.extensionName || "Greedant";
       _scrollDownBtn = options.scrollDownBtn || null;
+      _onRunCommand = options.onRunCommand || null;
 
       if (_container) {
         _container.addEventListener("scroll", handleScroll);
+        
+        // Delegate click events for run buttons
+        _container.addEventListener("click", function (e) {
+          const runBtn = e.target.closest(".run-btn");
+          if (runBtn && _onRunCommand) {
+            const command = runBtn.getAttribute("data-command");
+            if (command) {
+              _onRunCommand(command);
+            }
+          }
+        });
       }
     },
 

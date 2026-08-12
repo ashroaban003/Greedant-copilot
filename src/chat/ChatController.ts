@@ -4,6 +4,7 @@ import { ChatMessage, ChatRole } from "./ChatMessage";
 import { ExtensionMessage, MSG } from "./MessageProtocol";
 import { ChatConfig } from "../config/ChatConfig";
 import { CONFIG_SECTION, CONFIG_OLLAMA_MODEL } from "../constants";
+import { TerminalService } from "../terminal/TerminalService";
 
 /**
  * ChatController manages the lifecycle of chat requests.
@@ -14,12 +15,14 @@ import { CONFIG_SECTION, CONFIG_OLLAMA_MODEL } from "../constants";
 export class ChatController {
   private chatService: ChatService;
   private config: ChatConfig;
+  private terminalService: TerminalService;
   private activeRequests = new Map<string, boolean>();
   private messageCounter = 0;
 
-  constructor(chatService: ChatService, config: ChatConfig) {
+  constructor(chatService: ChatService, config: ChatConfig, terminalService: TerminalService) {
     this.chatService = chatService;
     this.config = config;
+    this.terminalService = terminalService;
   }
 
   async handleUserMessage(
@@ -85,6 +88,23 @@ export class ChatController {
 
   async checkProvider(): Promise<{ available: boolean; error?: string }> {
     return this.chatService.checkAvailability();
+  }
+
+  /**
+   * Execute a command in the VS Code terminal.
+   */
+  async handleRunCommand(
+    command: string,
+    postMessage: (message: ExtensionMessage) => void
+  ): Promise<void> {
+    try {
+      await this.terminalService.runCommand(command);
+      postMessage({ type: MSG.COMMAND_EXECUTED, command, success: true });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to run command";
+      postMessage({ type: MSG.ERROR, error: errorMessage });
+      postMessage({ type: MSG.COMMAND_EXECUTED, command, success: false });
+    }
   }
 
   get busy(): boolean {
@@ -179,5 +199,6 @@ export class ChatController {
 
   dispose(): void {
     this.chatService.dispose();
+    this.terminalService.dispose();
   }
 }

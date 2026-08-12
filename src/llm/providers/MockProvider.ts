@@ -28,7 +28,13 @@ export class MockProvider implements LLMProvider {
   }
 
   async *streamChat(request: LLMRequest): AsyncGenerator<LLMStreamChunk, void, unknown> {
-    const response = this.formatDebugResponse(request);
+    const userMessage = request.messages.find(m => m.role === "user")?.content || "";
+    
+    // Check for terminal test trigger
+    const response = this.isTerminalTestRequest(userMessage)
+      ? this.getTerminalTestResponse()
+      : this.formatDebugResponse(request);
+    
     const words = response.split(" ");
 
     for (let i = 0; i < words.length; i++) {
@@ -155,5 +161,32 @@ export class MockProvider implements LLMProvider {
 
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private isTerminalTestRequest(userMessage: string): boolean {
+    const lower = userMessage.toLowerCase();
+    return lower.includes("give prompt") || lower.includes("test terminal");
+  }
+
+  private getTerminalTestResponse(): string {
+    return `Here are some useful git commands to check your repository status:
+
+\`\`\`bash
+git status
+\`\`\`
+
+To see recent commits:
+
+\`\`\`bash
+git log --oneline -5
+\`\`\`
+
+Check which branch you're on:
+
+\`\`\`bash
+git branch
+\`\`\`
+
+These commands are read-only and won't modify anything.`;
   }
 }

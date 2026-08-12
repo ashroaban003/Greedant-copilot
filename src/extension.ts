@@ -16,6 +16,7 @@ import { GrepProvider } from "./context/providers/GrepProvider";
 import { TokenBudget } from "./context/TokenBudget";
 import { ContextManager } from "./context/ContextManager";
 import { SmartKeywordExtractor } from "./agent/SmartKeywordExtractor";
+import { TerminalService } from "./terminal/TerminalService";
 
 let viewProvider: GreedantViewProvider | undefined;
 
@@ -43,7 +44,8 @@ export function activate(context: vscode.ExtensionContext): void {
   });
 
   const chatService = new ChatService(provider, config, contextManager);
-  const chatController = new ChatController(chatService, config);
+  const terminalService = new TerminalService();
+  const chatController = new ChatController(chatService, config, terminalService);
 
   viewProvider = new GreedantViewProvider(context.extensionUri, chatController, config);
   context.subscriptions.push(

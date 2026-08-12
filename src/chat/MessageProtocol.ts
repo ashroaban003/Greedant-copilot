@@ -16,6 +16,7 @@ export const MSG = {
   READY: "ready",
   REQUEST_MODELS: "requestModels",
   SELECT_MODEL: "selectModel",
+  RUN_COMMAND: "runCommand",
 
   // Extension host → Webview
   RECEIVE_MESSAGE: "receiveMessage",
@@ -24,6 +25,7 @@ export const MSG = {
   ERROR: "error",
   SET_LOADING: "setLoading",
   MODEL_LIST: "modelList",
+  COMMAND_EXECUTED: "commandExecuted",
 } as const;
 
 /** Messages from webview -> extension host */
@@ -33,7 +35,8 @@ export type WebviewMessage =
   | { type: typeof MSG.CANCEL_REQUEST }
   | { type: typeof MSG.READY }
   | { type: typeof MSG.REQUEST_MODELS }
-  | { type: typeof MSG.SELECT_MODEL; model: string };
+  | { type: typeof MSG.SELECT_MODEL; model: string }
+  | { type: typeof MSG.RUN_COMMAND; command: string };
 
 /** Messages from extension host -> webview */
 export type ExtensionMessage =
@@ -43,4 +46,5 @@ export type ExtensionMessage =
   | { type: typeof MSG.ERROR; error: string }
   | { type: typeof MSG.SET_LOADING; loading: boolean }
   | { type: typeof MSG.CLEAR_CHAT }
-  | { type: typeof MSG.MODEL_LIST; models: string[]; activeModel: string };
+  | { type: typeof MSG.MODEL_LIST; models: string[]; activeModel: string }
+  | { type: typeof MSG.COMMAND_EXECUTED; command: string; success: boolean };

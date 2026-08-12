@@ -97,6 +97,10 @@ export class GreedantViewProvider implements vscode.WebviewViewProvider {
       case MSG.SELECT_MODEL:
         await this.chatController.handleModelSelection(message.model, (msg) => this.postMessage(msg));
         break;
+
+      case MSG.RUN_COMMAND:
+        await this.chatController.handleRunCommand(message.command, (msg) => this.postMessage(msg));
+        break;
     }
   }
 

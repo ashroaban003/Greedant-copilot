@@ -7,6 +7,7 @@ import { ChatConfig } from "../../src/config/ChatConfig";
 import { ContextManager, ContextManagerDeps } from "../../src/context/ContextManager";
 import { SelectionProvider } from "../../src/context/providers/SelectionProvider";
 import { TokenBudget } from "../../src/context/TokenBudget";
+import { TerminalService } from "../../src/terminal/TerminalService";
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -56,13 +57,23 @@ function createMockContextManager(): ContextManager {
   return new ContextManager(deps);
 }
 
+function createMockTerminalService(): TerminalService {
+  return {
+    runCommand: jest.fn(async () => {}),
+    runCommands: jest.fn(async () => {}),
+    show: jest.fn(),
+    dispose: jest.fn(),
+  } as unknown as TerminalService;
+}
+
 function createController(providerOverrides: Partial<LLMProvider> = {}) {
   const provider = createMockProvider(providerOverrides);
   const config = createMockConfig();
   const contextManager = createMockContextManager();
   const chatService = new ChatService(provider, config, contextManager);
-  const controller = new ChatController(chatService, config);
-  return { controller, provider, chatService };
+  const terminalService = createMockTerminalService();
+  const controller = new ChatController(chatService, config, terminalService);
+  return { controller, provider, chatService, terminalService };
 }
 
 function collectMessages(
