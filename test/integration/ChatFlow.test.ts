@@ -17,6 +17,7 @@ import { ContextManager, ContextManagerDeps } from "../../src/context/ContextMan
 import { SelectionProvider } from "../../src/context/providers/SelectionProvider";
 import { TokenBudget } from "../../src/context/TokenBudget";
 import { LLMRequest } from "../../src/llm/LLMTypes";
+import { TerminalService } from "../../src/terminal/TerminalService";
 
 function createMockConfig(): ChatConfig {
   return {
@@ -42,12 +43,22 @@ function createMockContextManager(context: string | null = null): ContextManager
   return new ContextManager(deps);
 }
 
+function createMockTerminalService(): TerminalService {
+  return {
+    runCommand: jest.fn(async () => {}),
+    runCommands: jest.fn(async () => {}),
+    show: jest.fn(),
+    dispose: jest.fn(),
+  } as unknown as TerminalService;
+}
+
 function buildPipeline(contextManager?: ContextManager) {
   const provider = new MockProvider();
   const config = createMockConfig();
   const cm = contextManager ?? createMockContextManager();
   const chatService = new ChatService(provider, config, cm);
-  const controller = new ChatController(chatService, config);
+  const terminalService = createMockTerminalService();
+  const controller = new ChatController(chatService, config, terminalService);
   return { controller, chatService, provider, contextManager: cm };
 }
 
@@ -292,7 +303,7 @@ describe("Integration: Context Flow", () => {
     const provider = new MockProvider();
     const config = createMockConfig();
     const chatService = new ChatService(provider, config, contextManager);
-    const controller = new ChatController(chatService, config);
+    const controller = new ChatController(chatService, config, createMockTerminalService());
 
     // Spy on the provider to capture the request
     const streamChatSpy = jest.spyOn(provider, "streamChat");
@@ -326,7 +337,7 @@ File: test.ts (lines 1-3)
     const provider = new MockProvider();
     const config = createMockConfig();
     const chatService = new ChatService(provider, config, contextManager);
-    const controller = new ChatController(chatService, config);
+    const controller = new ChatController(chatService, config, createMockTerminalService());
 
     const streamChatSpy = jest.spyOn(provider, "streamChat");
 
@@ -346,7 +357,7 @@ File: test.ts (lines 1-3)
     const provider = new MockProvider();
     const config = createMockConfig();
     const chatService = new ChatService(provider, config, contextManager);
-    const controller = new ChatController(chatService, config);
+    const controller = new ChatController(chatService, config, createMockTerminalService());
 
     const streamChatSpy = jest.spyOn(provider, "streamChat");
 
@@ -366,7 +377,7 @@ File: test.ts (lines 1-3)
     const provider = new MockProvider();
     const config = createMockConfig();
     const chatService = new ChatService(provider, config, contextManager);
-    const controller = new ChatController(chatService, config);
+    const controller = new ChatController(chatService, config, createMockTerminalService());
 
     const streamChatSpy = jest.spyOn(provider, "streamChat");
 
@@ -391,7 +402,7 @@ File: test.ts (lines 1-3)
     const provider = new MockProvider();
     const config = createMockConfig();
     const chatService = new ChatService(provider, config, contextManager);
-    const controller = new ChatController(chatService, config);
+    const controller = new ChatController(chatService, config, createMockTerminalService());
 
     const streamChatSpy = jest.spyOn(provider, "streamChat");
 
@@ -425,7 +436,7 @@ File: test.ts (lines 1-3)
     const provider = new MockProvider();
     const config = createMockConfig();
     const chatService = new ChatService(provider, config, contextManager);
-    const controller = new ChatController(chatService, config);
+    const controller = new ChatController(chatService, config, createMockTerminalService());
 
     const streamChatSpy = jest.spyOn(provider, "streamChat");
 

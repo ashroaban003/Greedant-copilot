@@ -37,6 +37,10 @@ var Icons = (function () {
     error: '<svg viewBox="0 0 16 16" fill="currentColor">' +
       '<path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 10.5a.75.75 0 110-1.5.75.75 0 010 1.5zM8.75 4v4.5h-1.5V4h1.5z"/>' +
       '</svg>',
+
+    play: '<svg viewBox="0 0 16 16" fill="currentColor">' +
+      '<path d="M4 2.5v11l9-5.5-9-5.5z"/>' +
+      '</svg>',
   };
 
   return {

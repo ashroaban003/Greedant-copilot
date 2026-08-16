@@ -3,6 +3,7 @@ import { LLMMessage, LLMStreamChunk } from "../llm/LLMTypes";
 import { ChatConfig } from "../config/ChatConfig";
 import { ChatRole } from "./ChatMessage";
 import { ContextManager } from "../context/ContextManager";
+import { CommandAgent } from "../agent/CommandAgent";
 
 /**
  * ChatService orchestrates the chat flow between the user and the LLM provider.
@@ -12,6 +13,7 @@ export class ChatService {
   private provider: LLMProvider;
   private config: ChatConfig;
   private contextManager: ContextManager;
+  private commandAgent: CommandAgent;
   private conversationHistory: LLMMessage[] = [];
 
   /** Maximum messages to retain in history */
@@ -25,6 +27,7 @@ export class ChatService {
     this.provider = provider;
     this.config = config;
     this.contextManager = contextManager;
+    this.commandAgent = new CommandAgent();
   }
 
   async fetchAndSetContextWindow(model?: string): Promise<void> {
@@ -42,11 +45,15 @@ export class ChatService {
 
   /**
    * Stream the assistant response chunk by chunk.
+   * Uses CommandAgent fast path for terminal/command requests.
    */
   async *sendMessageStreaming(
     userMessage: string
   ): AsyncGenerator<LLMStreamChunk, void, unknown> {
-    const messages = await this.buildMessages(userMessage);
+    // Decide which path: command agent (fast) or normal (context gathering)
+    const messages = this.commandAgent.shouldHandle(userMessage)
+      ? this.commandAgent.buildMessages(userMessage)
+      : await this.buildMessages(userMessage);
 
     let fullResponse = "";
 
