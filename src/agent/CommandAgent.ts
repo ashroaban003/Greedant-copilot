@@ -95,14 +95,14 @@ const CATEGORY_EXAMPLES: Record<CommandCategory, string> = {
 
 /** Trigger patterns for shouldHandle() */
 const TRIGGER_PATTERNS = [
-  /\bgit\b.*\b(command|how|to|status|log|diff|branch|stash|pull|push|fetch|reset|checkout|merge|clone|add|commit)\b/i,
+  /\bgit\b.*\b(command|how|to|status|log|diff|branch|stash|pull|push|fetch|reset|check|checkout|merge|clone|add|commit)\b/i,
   /\b(terminal|shell|bash|cmd)\b.*\b(command|run|execute|how|to)\b/i,
   /\b(run|execute)\b.*\b(command|script|terminal|shell)\b/i,
   /\b(node|npm|java|python|python3|docker|go|rust|rustc|ruby|php|pip)\b.*\b(version|--version|-v)\b/i,
   /\bversion\b.*\b(node|npm|java|python|docker|go|rust|ruby|php)\b/i,
   /\bcheck\b.*\b(node|npm|java|python|docker|go|rust|ruby|php)\b/i,
   /\bnpm\b.*\b(command|install|outdated|list|run|update|audit|how|to)\b/i,
-  /\bdocker\b.*\b(command|ps|images|logs|stop|start|run|how|to)\b/i,
+  /\b(docker|ollama)\b.*\b(command|ps|images|logs|stop|start|run|how|to)\b/i,
   /\b(list files|find file|disk usage|folder size|large files|pwd|current directory)\b/i,
   /\b(running processes|kill process|port in use|what's on port|memory usage|disk space)\b/i,
 ];
