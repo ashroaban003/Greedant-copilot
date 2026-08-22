@@ -7,7 +7,7 @@ import { ChatConfig } from "../config/ChatConfig";
  * centralized factory function to create LLMProvider instances based on the provided configuration.
  */
 export function createProvider(config: ChatConfig): LLMProvider {
-  // mreturn new MockProvider();
+  return new MockProvider();
   switch (config.provider) {
     case "ollama":
       return new OllamaProvider(config);

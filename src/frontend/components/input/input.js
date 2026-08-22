@@ -2,18 +2,18 @@
  * Input Component
  *
  * Manages the chat input area: textarea auto-resize,
- * keyboard shortcuts, send action, loading state.
- * Future: file attachments, slash commands, @mentions.
+ * keyboard shortcuts, send action, loading state,
+ * and file attachments (images, PDFs).
  */
 
 // eslint-disable-next-line no-unused-vars
 const InputComponent = (function () {
   "use strict";
 
-  let _input = null;
-  let _sendBtn = null;
-  let _thinkingIndicator = null;
+  let _input, _sendBtn, _thinkingIndicator, _attachBtn, _fileInput;
+  let _filePreview, _filePreviewName, _filePreviewRemove;
   let _isLoading = false;
+  let _selectedFile = null;
   let _onSend = null;
 
   function autoResize() {
@@ -21,24 +21,50 @@ const InputComponent = (function () {
     _input.style.height = Math.min(_input.scrollHeight, 120) + "px";
   }
 
-  function send() {
+  function clearFile() {
+    _selectedFile = null;
+    _fileInput.value = "";
+    _filePreview.classList.remove("visible");
+    _input.placeholder = "Ask anything...";
+  }
+
+  async function send() {
+    if (_isLoading) return;
+
     const content = _input.value.trim();
-    if (!content || _isLoading) return;
+
+    // File upload flow
+    if (_selectedFile) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result.split(",")[1];
+        _onSend(content, { filename: _selectedFile.name, base64Data: base64 });
+        _input.value = "";
+        _input.style.height = "auto";
+        clearFile();
+      };
+      reader.readAsDataURL(_selectedFile);
+      return;
+    }
+
+    // Regular text message
+    if (!content) return;
     _input.value = "";
     _input.style.height = "auto";
-    if (_onSend) _onSend(content);
+    _onSend(content, null);
   }
 
   return {
-    /**
-     * Initialize the input component.
-     * @param {Object} options
-     * @param {Function} options.onSend - Callback with message content string
-     */
     init: function (options) {
       _input = document.getElementById("messageInput");
       _sendBtn = document.getElementById("sendBtn");
       _thinkingIndicator = document.getElementById("thinkingIndicator");
+      _attachBtn = document.getElementById("attachBtn");
+      _fileInput = document.getElementById("fileInput");
+      _filePreview = document.getElementById("filePreview");
+      _filePreviewName = document.getElementById("filePreviewName");
+      _filePreviewRemove = document.getElementById("filePreviewRemove");
+
       _onSend = options.onSend || function () {};
 
       _input.addEventListener("input", autoResize);
@@ -48,34 +74,42 @@ const InputComponent = (function () {
           send();
         }
       });
+
       _sendBtn.addEventListener("click", send);
+
+      _attachBtn.addEventListener("click", function () {
+        if (!_isLoading) _fileInput.click();
+      });
+
+      _fileInput.addEventListener("change", function (e) {
+        const file = e.target.files?.[0];
+        if (file) {
+          _selectedFile = file;
+          _filePreviewName.textContent = file.name;
+          _filePreview.classList.add("visible");
+          _input.placeholder = "Add a message (optional)...";
+        }
+      });
+
+      _filePreviewRemove.addEventListener("click", clearFile);
     },
 
-    /**
-     * Set loading/thinking state.
-     * @param {boolean} loading
-     */
     setLoading: function (loading) {
       _isLoading = loading;
       _sendBtn.disabled = loading;
+      _attachBtn.disabled = loading;
       _thinkingIndicator.classList.toggle("active", loading);
     },
 
-    /** Focus the input field. */
     focus: function () {
       if (_input) _input.focus();
     },
 
-    /**
-     * Programmatically set input value (e.g. from welcome hints).
-     * @param {string} text
-     */
     setValue: function (text) {
       _input.value = text;
       autoResize();
     },
 
-    /** Trigger a send programmatically. */
     submit: function () {
       send();
     },

@@ -107,6 +107,46 @@ export class ChatController {
     }
   }
 
+  /**
+   * Handle file uploads (images/PDFs) - fast path via FileProcessorAgent.
+   */
+  async handleFileMessage(
+    filename: string,
+    base64Data: string,
+    userMessage: string | undefined,
+    postMessage: (message: ExtensionMessage) => void,
+    sessionId: string = "default"
+  ): Promise<void> {
+    if (this.activeRequests.get(sessionId)) {
+      postMessage({
+        type: MSG.ERROR,
+        error: "A request is already in progress. Please wait.",
+      });
+      return;
+    }
+
+    this.activeRequests.set(sessionId, true);
+
+    try {
+      postMessage({ type: MSG.SET_LOADING, loading: true });
+
+      // Show user message with file info
+      const displayContent = userMessage ? `${filename}\n\n${userMessage}` : `${filename}`;
+      this.processUserMessage(displayContent, postMessage);
+      
+      // Stream assistant response
+      await this.processAssistantMessage("", postMessage, { filename, base64Data, userMessage });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to process file.";
+
+      postMessage({ type: MSG.ERROR, error: errorMessage });
+    } finally {
+      this.activeRequests.delete(sessionId);
+      postMessage({ type: MSG.SET_LOADING, loading: false });
+    }
+  }
+
   get busy(): boolean {
     return this.activeRequests.size > 0;
   }
@@ -171,7 +211,8 @@ export class ChatController {
    */
   private async processAssistantMessage(
     userContent: string,
-    postMessage: (message: ExtensionMessage) => void
+    postMessage: (message: ExtensionMessage) => void,
+    fileInput?: { filename: string; base64Data: string; userMessage?: string }
   ): Promise<void> {
     const id = this.generateMessageId();
     const assistantMessage: ChatMessage = {
@@ -183,7 +224,7 @@ export class ChatController {
     };
     postMessage({ type: MSG.RECEIVE_MESSAGE, message: assistantMessage });
 
-    for await (const chunk of this.chatService.sendMessageStreaming(userContent)) {
+    for await (const chunk of this.chatService.sendMessageStreaming(userContent, fileInput)) {
       postMessage({
         type: MSG.STREAM_CHUNK,
         messageId: id,
