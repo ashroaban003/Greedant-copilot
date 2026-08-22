@@ -71,20 +71,12 @@ export class GreedantViewProvider implements vscode.WebviewViewProvider {
   private async handleMessage(message: WebviewMessage): Promise<void> {
     switch (message.type) {
       case MSG.SEND_MESSAGE:
-        if (message.file) {
-          // File upload with optional text
-          await this.chatController.handleFileMessage(
-            message.file.filename,
-            message.file.base64Data,
-            message.content || undefined,
-            (msg) => this.postMessage(msg)
-          );
-        } else {
-          // Text only
-          await this.chatController.handleUserMessage(message.content, (msg) =>
-            this.postMessage(msg)
-          );
-        }
+        await this.chatController.handleUserMessage(
+          message.content,
+          (msg) => this.postMessage(msg),
+          "default",
+          message.file
+        );
         break;
 
       case MSG.CLEAR_CHAT:

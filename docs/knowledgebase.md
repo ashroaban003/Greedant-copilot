@@ -178,30 +178,6 @@ Greedant can process uploaded images and PDFs, extract text, and analyze content
 
 When user uploads a file (image or PDF), `FileProcessorAgent` bypasses context gathering for direct LLM processing.
 
-**Supported File Types:**
-- Images: PNG, JPG, JPEG, GIF, BMP, WebP → OCR via Tesseract.js
-- Documents: PDF → Text extraction via pdf-parse
-
-**Flow:**
-```
-User uploads file
-    │
-    ├─► Frontend reads file as base64
-    │
-    ├─► ChatController.handleFileMessage()
-    │
-    ├─► ChatService.sendFileStreaming()
-    │
-    └─► FileProcessorAgent.processAndBuildMessages()
-            │
-            ├─► Image? → OCRService.extractTextFromBase64()
-            │
-            └─► PDF? → PDFService.extractTextFromBase64()
-                    │
-                    └─► buildMessages() → Direct to LLM
-                        (no context gathering)
-```
-
 ### Key Files
 | File | Purpose |
 |------|---------|

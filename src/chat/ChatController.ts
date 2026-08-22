@@ -28,7 +28,8 @@ export class ChatController {
   async handleUserMessage(
     content: string,
     postMessage: (message: ExtensionMessage) => void,
-    sessionId: string = "default"
+    sessionId: string = "default",
+    file?: { filename: string; base64Data: string }
   ): Promise<void> {
     if (this.activeRequests.get(sessionId)) {
       postMessage({
@@ -38,7 +39,7 @@ export class ChatController {
       return;
     }
 
-    if (!content.trim()) {
+    if (!content.trim() && !file) {
       return;
     }
 
@@ -47,8 +48,17 @@ export class ChatController {
     try {
       postMessage({ type: MSG.SET_LOADING, loading: true });
 
-      this.processUserMessage(content.trim(), postMessage);
-      await this.processAssistantMessage(content.trim(), postMessage);
+      const displayContent = file 
+        ? (content.trim() ? `${file.filename}\n\n${content.trim()}` : file.filename)
+        : content.trim();
+
+      this.processUserMessage(displayContent, postMessage);
+
+      const fileInput = file 
+        ? { filename: file.filename, base64Data: file.base64Data, userMessage: content.trim() || undefined }
+        : undefined;
+
+      await this.processAssistantMessage(content.trim(), postMessage, fileInput);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -104,46 +114,6 @@ export class ChatController {
       const errorMessage = error instanceof Error ? error.message : "Failed to run command";
       postMessage({ type: MSG.ERROR, error: errorMessage });
       postMessage({ type: MSG.COMMAND_EXECUTED, command, success: false });
-    }
-  }
-
-  /**
-   * Handle file uploads (images/PDFs) - fast path via FileProcessorAgent.
-   */
-  async handleFileMessage(
-    filename: string,
-    base64Data: string,
-    userMessage: string | undefined,
-    postMessage: (message: ExtensionMessage) => void,
-    sessionId: string = "default"
-  ): Promise<void> {
-    if (this.activeRequests.get(sessionId)) {
-      postMessage({
-        type: MSG.ERROR,
-        error: "A request is already in progress. Please wait.",
-      });
-      return;
-    }
-
-    this.activeRequests.set(sessionId, true);
-
-    try {
-      postMessage({ type: MSG.SET_LOADING, loading: true });
-
-      // Show user message with file info
-      const displayContent = userMessage ? `${filename}\n\n${userMessage}` : `${filename}`;
-      this.processUserMessage(displayContent, postMessage);
-      
-      // Stream assistant response
-      await this.processAssistantMessage("", postMessage, { filename, base64Data, userMessage });
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Failed to process file.";
-
-      postMessage({ type: MSG.ERROR, error: errorMessage });
-    } finally {
-      this.activeRequests.delete(sessionId);
-      postMessage({ type: MSG.SET_LOADING, loading: false });
     }
   }
 
