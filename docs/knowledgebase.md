@@ -13,6 +13,10 @@ extension.ts (entry)
     │     ├── GrepProvider (workspace search)
     │     └── SmartKeywordExtractor (LLM-powered keyword extraction)
     ├── ChatService (LLM orchestration + history)
+    │     ├── CommandAgent (fast path for terminal commands)
+    │     └── FileProcessorAgent (fast path for fileuploads)
+    │           ├── OCRService (Tesseract.js)
+    │           └── PDFService (pdf-parse)
     └── ChatController → GreedantViewProvider (Webview UI)
 ```
 
@@ -26,6 +30,9 @@ extension.ts (entry)
 | `src/context/ContextManager.ts` | Central context gathering, token budgeting, function extraction |
 | `src/agent/SmartKeywordExtractor.ts` | LLM-powered keyword extraction with tier1/tier2 system |
 | `src/agent/CommandAgent.ts` | Fast path for terminal commands, category-based prompts |
+| `src/agent/FileProcessorAgent.ts` | Fast path for file uploads (images/PDFs) |
+| `src/ocr/OCRService.ts` | Tesseract.js wrapper for image OCR |
+| `src/ocr/PDFService.ts` | pdf-parse wrapper for PDF text extraction |
 | `src/context/providers/GrepProvider.ts` | Workspace-wide file search by filename/content |
 | `src/llm/providers/OllamaProvider.ts` | Ollama API integration (chat, stream, models) |
 | `src/llm/ProviderFactory.ts` | Creates LLMProvider based on config |
@@ -162,3 +169,49 @@ bash, sh, shell, zsh, powershell, cmd, terminal
 1. Create `src/llm/providers/NewProvider.ts` implementing `LLMProvider`
 2. Add case in `ProviderFactory.createProvider()`
 3. Add config options in `ChatConfig` if needed
+
+## File Upload (OCR/PDF)
+
+Greedant can process uploaded images and PDFs, extract text, and analyze content.
+
+### FileProcessorAgent (Fast Path)
+
+When user uploads a file (image or PDF), `FileProcessorAgent` bypasses context gathering for direct LLM processing.
+
+**Supported File Types:**
+- Images: PNG, JPG, JPEG, GIF, BMP, WebP → OCR via Tesseract.js
+- Documents: PDF → Text extraction via pdf-parse
+
+**Flow:**
+```
+User uploads file
+    │
+    ├─► Frontend reads file as base64
+    │
+    ├─► ChatController.handleFileMessage()
+    │
+    ├─► ChatService.sendFileStreaming()
+    │
+    └─► FileProcessorAgent.processAndBuildMessages()
+            │
+            ├─► Image? → OCRService.extractTextFromBase64()
+            │
+            └─► PDF? → PDFService.extractTextFromBase64()
+                    │
+                    └─► buildMessages() → Direct to LLM
+                        (no context gathering)
+```
+
+### Key Files
+| File | Purpose |
+|------|---------|
+| `src/agent/FileProcessorAgent.ts` | Orchestrates file processing, routes to OCR/PDF service, builds LLM messages |
+| `src/ocr/OCRService.ts` | Tesseract.js wrapper for image text extraction |
+| `src/ocr/PDFService.ts` | pdf-parse wrapper for PDF text extraction |
+| `src/frontend/components/input/input.js` | File upload UI, drag-drop, base64 encoding |
+
+### Frontend Upload Features
+- Attach button in input area
+- Drag-and-drop support
+- File preview with remove option
+- Optional message input alongside file

@@ -4,6 +4,7 @@ import { ChatConfig } from "../config/ChatConfig";
 import { ChatRole } from "./ChatMessage";
 import { ContextManager } from "../context/ContextManager";
 import { CommandAgent } from "../agent/CommandAgent";
+import { FileProcessorAgent, FileInput } from "../agent/FileProcessorAgent";
 
 /**
  * ChatService orchestrates the chat flow between the user and the LLM provider.
@@ -14,6 +15,7 @@ export class ChatService {
   private config: ChatConfig;
   private contextManager: ContextManager;
   private commandAgent: CommandAgent;
+  private fileProcessorAgent: FileProcessorAgent;
   private conversationHistory: LLMMessage[] = [];
 
   /** Maximum messages to retain in history */
@@ -28,6 +30,7 @@ export class ChatService {
     this.config = config;
     this.contextManager = contextManager;
     this.commandAgent = new CommandAgent();
+    this.fileProcessorAgent = new FileProcessorAgent();
   }
 
   async fetchAndSetContextWindow(model?: string): Promise<void> {
@@ -35,6 +38,7 @@ export class ChatService {
       const size = await this.provider.getContextWindowSize(model);
       if (size) {
         this.contextManager.setContextWindow(size);
+        this.fileProcessorAgent.setContextWindow(size);
       }
     }
   }
@@ -45,15 +49,21 @@ export class ChatService {
 
   /**
    * Stream the assistant response chunk by chunk.
-   * Uses CommandAgent fast path for terminal/command requests.
+   * Routes to appropriate handler: CommandAgent, FileProcessorAgent, or normal context gathering.
    */
   async *sendMessageStreaming(
-    userMessage: string
+    userMessage: string,
+    fileInput?: FileInput
   ): AsyncGenerator<LLMStreamChunk, void, unknown> {
-    // Decide which path: command agent (fast) or normal (context gathering)
-    const messages = this.commandAgent.shouldHandle(userMessage)
-      ? this.commandAgent.buildMessages(userMessage)
-      : await this.buildMessages(userMessage);
+    let messages: LLMMessage[];
+
+    if (fileInput) {
+      messages = await this.fileProcessorAgent.processAndBuildMessages(fileInput);
+    } else if (this.commandAgent.shouldHandle(userMessage)) {
+      messages = this.commandAgent.buildMessages(userMessage);
+    } else {
+      messages = await this.buildMessages(userMessage);
+    }
 
     let fullResponse = "";
 

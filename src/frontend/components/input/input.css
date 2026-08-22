@@ -164,3 +164,76 @@
   padding-top: 6px;
   gap: 8px;
 }
+
+/* ── Attach Button ─────────────────────────────────────────── */
+.attach-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+  opacity: 0.7;
+}
+
+.attach-btn:hover:not(:disabled) {
+  opacity: 1;
+  color: var(--vscode-foreground);
+  background: var(--vscode-toolbar-hoverBackground, rgba(90, 93, 94, 0.31));
+}
+
+.attach-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.attach-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ── File Preview ──────────────────────────────────────────── */
+.file-preview {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border, var(--vscode-panel-border));
+  border-radius: var(--radius-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+.file-preview.visible {
+  display: flex;
+}
+
+.file-preview-name {
+  font-size: 12px;
+  color: var(--vscode-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.file-preview-remove {
+  background: none;
+  border: none;
+  color: var(--vscode-descriptionForeground);
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.file-preview-remove:hover {
+  opacity: 1;
+  color: var(--vscode-errorForeground);
+}
