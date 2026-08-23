@@ -30,7 +30,7 @@ export const MSG = {
 
 /** Messages from webview -> extension host */
 export type WebviewMessage =
-  | { type: typeof MSG.SEND_MESSAGE; content: string }
+  | { type: typeof MSG.SEND_MESSAGE; content: string; file?: { filename: string; base64Data: string } }
   | { type: typeof MSG.CLEAR_CHAT }
   | { type: typeof MSG.CANCEL_REQUEST }
   | { type: typeof MSG.READY }

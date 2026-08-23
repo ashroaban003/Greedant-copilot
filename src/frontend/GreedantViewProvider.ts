@@ -8,12 +8,9 @@ import { buildChatHtml } from "./HtmlBuilder";
 /**
  * GreedantViewProvider — webview lifecycle and message routing.
  *
- * This class is intentionally thin. It handles:
  * - Registering with VS Code's webview view system
  * - Loading the HTML (delegated to HtmlBuilder)
  * - Routing messages between the webview and ChatController
- *
- * No presentation logic or HTML assembly lives here.
  */
 export class GreedantViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = VIEW_ID;
@@ -74,8 +71,11 @@ export class GreedantViewProvider implements vscode.WebviewViewProvider {
   private async handleMessage(message: WebviewMessage): Promise<void> {
     switch (message.type) {
       case MSG.SEND_MESSAGE:
-        await this.chatController.handleUserMessage(message.content, (msg) =>
-          this.postMessage(msg)
+        await this.chatController.handleUserMessage(
+          message.content,
+          (msg) => this.postMessage(msg),
+          "default",
+          message.file
         );
         break;
 

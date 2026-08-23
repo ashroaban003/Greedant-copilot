@@ -36,8 +36,12 @@
   }
 
   InputComponent.init({
-    onSend: function (content) {
-      vscode.postMessage({ type: "sendMessage", content: content });
+    onSend: function (content, file) {
+      const message = { type: "sendMessage", content: content };
+      if (file) {
+        message.file = { filename: file.filename, base64Data: file.base64Data };
+      }
+      vscode.postMessage(message);
     },
   });
 

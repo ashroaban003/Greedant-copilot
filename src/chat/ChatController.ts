@@ -28,7 +28,8 @@ export class ChatController {
   async handleUserMessage(
     content: string,
     postMessage: (message: ExtensionMessage) => void,
-    sessionId: string = "default"
+    sessionId: string = "default",
+    file?: { filename: string; base64Data: string }
   ): Promise<void> {
     if (this.activeRequests.get(sessionId)) {
       postMessage({
@@ -38,7 +39,7 @@ export class ChatController {
       return;
     }
 
-    if (!content.trim()) {
+    if (!content.trim() && !file) {
       return;
     }
 
@@ -47,8 +48,17 @@ export class ChatController {
     try {
       postMessage({ type: MSG.SET_LOADING, loading: true });
 
-      this.processUserMessage(content.trim(), postMessage);
-      await this.processAssistantMessage(content.trim(), postMessage);
+      const displayContent = file 
+        ? (content.trim() ? `${file.filename}\n\n${content.trim()}` : file.filename)
+        : content.trim();
+
+      this.processUserMessage(displayContent, postMessage);
+
+      const fileInput = file 
+        ? { filename: file.filename, base64Data: file.base64Data, userMessage: content.trim() || undefined }
+        : undefined;
+
+      await this.processAssistantMessage(content.trim(), postMessage, fileInput);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "An unexpected error occurred.";
@@ -171,7 +181,8 @@ export class ChatController {
    */
   private async processAssistantMessage(
     userContent: string,
-    postMessage: (message: ExtensionMessage) => void
+    postMessage: (message: ExtensionMessage) => void,
+    fileInput?: { filename: string; base64Data: string; userMessage?: string }
   ): Promise<void> {
     const id = this.generateMessageId();
     const assistantMessage: ChatMessage = {
@@ -183,7 +194,7 @@ export class ChatController {
     };
     postMessage({ type: MSG.RECEIVE_MESSAGE, message: assistantMessage });
 
-    for await (const chunk of this.chatService.sendMessageStreaming(userContent)) {
+    for await (const chunk of this.chatService.sendMessageStreaming(userContent, fileInput)) {
       postMessage({
         type: MSG.STREAM_CHUNK,
         messageId: id,

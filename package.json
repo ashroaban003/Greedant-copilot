@@ -107,5 +107,9 @@
     "ts-jest": "^29.4.11",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "tesseract.js": "^5.1.1",
+    "pdf-parse": "^1.1.1"
   }
 }
