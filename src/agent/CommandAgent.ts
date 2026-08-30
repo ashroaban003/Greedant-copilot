@@ -21,6 +21,12 @@ const GIT_EXAMPLES = `
 GIT REFERENCE:
 status, log --oneline, diff, branch -a, stash, stash pop, pull, push, fetch, reset --soft HEAD~1, checkout, checkout -b, merge, clone, add, commit -m, remote -v`;
 
+const OLLAMA_EXAMPLES = `
+OLLAMA REFERENCE:
+list, ps, pull <model>, run <model>, stop <model>, rm <model>,
+show <model>, cp <source> <destination>, create <model> -f <Modelfile>,
+serve, --version`;
+
 const VERSION_EXAMPLES = `
 VERSION REFERENCE:
 node --version, npm --version, java --version, python3 --version, docker --version, go version, rustc --version, ruby --version`;
@@ -57,9 +63,9 @@ another command
 Example:
 User : Give command to check git status and see recent commits
 Response:
-Check working directory status:
+Check available ollama models:
 \`\`\`bash
-git status
+ollama list
 \`\`\`
 
 View recent commits:
@@ -71,10 +77,11 @@ Follow this format exactly.`;
 
 // ─── Category Detection ───────────────────────────────────────────
 
-type CommandCategory = "git" | "version" | "npm" | "docker" | "file" | "process" | "general";
+type CommandCategory = "git" | "ollama" | "version" | "npm" | "docker" | "file" | "process" | "general";
 
 const CATEGORY_PATTERNS: Record<CommandCategory, RegExp> = {
   git: /\bgit\b/i,
+  ollama: /\bollama\b/i,
   version: /\b(version|--version|-v)\b.*\b(node|npm|java|python|docker|go|rust|ruby|php)\b|\b(node|npm|java|python|docker|go|rust|ruby|php)\b.*\b(version|--version|-v)\b/i,
   npm: /\bnpm\b/i,
   docker: /\bdocker\b/i,
@@ -85,6 +92,7 @@ const CATEGORY_PATTERNS: Record<CommandCategory, RegExp> = {
 
 const CATEGORY_EXAMPLES: Record<CommandCategory, string> = {
   git: GIT_EXAMPLES,
+  ollama: OLLAMA_EXAMPLES,
   version: VERSION_EXAMPLES,
   npm: NPM_EXAMPLES,
   docker: DOCKER_EXAMPLES,
@@ -139,6 +147,7 @@ export class CommandAgent {
     if (CATEGORY_PATTERNS.docker.test(msg)) return "docker";
     if (CATEGORY_PATTERNS.file.test(msg)) return "file";
     if (CATEGORY_PATTERNS.process.test(msg)) return "process";
+    if (CATEGORY_PATTERNS.ollama.test(msg)) return "ollama";
     
     return "general";
   }
