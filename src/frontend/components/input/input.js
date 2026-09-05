@@ -21,11 +21,18 @@ const InputComponent = (function () {
     _input.style.height = Math.min(_input.scrollHeight, 120) + "px";
   }
 
+  function updateSendButtonState() {
+    const hasContent = _input.value.trim().length > 0;
+    const hasFile = _selectedFile !== null;
+    _sendBtn.disabled = _isLoading || (!hasContent && !hasFile);
+  }
+
   function clearFile() {
     _selectedFile = null;
     _fileInput.value = "";
     _filePreview.classList.remove("visible");
     _input.placeholder = "Ask anything...";
+    updateSendButtonState();
   }
 
   async function send() {
@@ -67,7 +74,10 @@ const InputComponent = (function () {
 
       _onSend = options.onSend || function () {};
 
-      _input.addEventListener("input", autoResize);
+      _input.addEventListener("input", function () {
+        autoResize();
+        updateSendButtonState();
+      });
       _input.addEventListener("keydown", function (e) {
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
@@ -88,17 +98,21 @@ const InputComponent = (function () {
           _filePreviewName.textContent = file.name;
           _filePreview.classList.add("visible");
           _input.placeholder = "Add a message (optional)...";
+          updateSendButtonState();
         }
       });
 
       _filePreviewRemove.addEventListener("click", clearFile);
+
+      // Initialize button state (disabled until content or file)
+      updateSendButtonState();
     },
 
     setLoading: function (loading) {
       _isLoading = loading;
-      _sendBtn.disabled = loading;
       _attachBtn.disabled = loading;
       _thinkingIndicator.classList.toggle("active", loading);
+      updateSendButtonState();
     },
 
     focus: function () {
@@ -108,6 +122,7 @@ const InputComponent = (function () {
     setValue: function (text) {
       _input.value = text;
       autoResize();
+      updateSendButtonState();
     },
 
     submit: function () {
